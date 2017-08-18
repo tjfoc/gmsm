@@ -1,6 +1,7 @@
 package main
 
 /*
+#
 #cgo pkg-config: openssl
 #include <openssl/obj_mac.h>
 #include <openssl/bn.h>
