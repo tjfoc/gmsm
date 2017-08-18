@@ -1,13 +1,37 @@
 package main
 
-import (
+import(
 	"fmt"
+	"strings"
 	"sm3"
+	"sm4"
 )
+func main() {
+	//sm4 test
+	sm4.TestcryptBlock()
+	
+	//sm3 test
+	test("123456")
+	TestSM3_1()
+	TestSM3_2()
+	TestSM3_3()
+}
 
 
+func test(msg string){
+	var mLen int= strings.Count(msg,"")-1 
+	buffer := make([]byte, mLen)
+	
+	copy(buffer[:], msg)
+	hw := sm3.NewSM3()
+	hw.Write(buffer[:])
 
+	uhash := make([]uint8, 32)
+	hw.Sum(uhash[:0])
+	calcVal := Byte2String(uhash)
 
+	fmt.Println("msg:"+msg+"\tcalcVal:" + calcVal)
+}
 
 func TestSM3_1() {
 	fmt.Println("in TestSM3_1 fun")
@@ -99,3 +123,4 @@ func Byte2String(b []byte) string {
 	}
 	return ret
 }
+
