@@ -4,6 +4,6 @@ package gmssl
 
 /*
 #cgo CFLAGS: -I/usr/include
-#cgo LDFLAGS: -L/usr/local/ssl/lib/ -lcrypto
+#cgo LDFLAGS: -L/usr/local/lib/ -lcrypto
 */
 import "C"

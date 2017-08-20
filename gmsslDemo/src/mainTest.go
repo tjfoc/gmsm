@@ -3,35 +3,11 @@ package main
 import (
 	"fmt"
 	"gmssl"
-	"io/ioutil"
 )
 
 func testSm2() {
 	fmt.Println("////////////// in testSm2 func  /////////")
-
-	prkDer, err := ioutil.ReadFile("/root/work/prk.der")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("私钥: %x \n", prkDer)
-
-	pukDer, err := ioutil.ReadFile("/root/work/puk.der")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("公钥: %x \n", pukDer)
-
-
-	verifyKey, signKey, err := gmssl.GenerateKeyPair("EC", nil, 256)
-	sm3digest := []byte("c70c5f73da4e8b8b73478af54241469566f6497e16c053a03a0170fa00078283")
-	signature, err := signKey.Sign("sm-scheme", nil, sm3digest)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = verifyKey.Verify("sm-scheme", nil, sm3digest, signature)
-	fmt.Println(err)
-
+	gmssl.Sm2Test()
 	fmt.Println("end testSm2 func\n")
 }
 
