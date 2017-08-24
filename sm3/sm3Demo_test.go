@@ -1,4 +1,4 @@
-package smtest
+package sm3
 
 import (
 	"testing"
@@ -30,9 +30,4 @@ func TestSm3_2(t *testing.T) {
 	} else {
 		t.Log("passed")
 	}
-}
-
-
-func TestSm4(t *testing.T) {
-	t.Log("passed")
 }
