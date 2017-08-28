@@ -4,20 +4,23 @@ language:
 go:
   - 1.8.3
 
-before_install:
+#before_install:
   #- git rm -r --cached .
   #- git add .
   #- git commit -m 'update .gitignore'
 install:
   - go get -v github.com/golang/lint/golint
-  #- go get -v github.com/wangduotj/gmsm/gmssl  
-  - go get -d -t -v ./...
-  - go build -v ./...
+  - go get -d -t -v ./sm3
+  - go get -d -t -v ./sm4
+  - go build -v ./sm3
+  - go build -v ./sm4
 
 script:
-  - go vet ./...
+  - go vet ./sm3
+  - go vet ./sm4
   - $HOME/gopath/bin/golint .
-  - go test -v ./...
+  - go test -v ./sm3
+  - go test -v ./sm4
 
 
 notifications:
