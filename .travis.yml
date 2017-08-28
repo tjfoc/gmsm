@@ -1,13 +1,16 @@
 sudo: false
-
 language: 
   - go
 go:
   - 1.8.3
 
+before_install:
+  #- git rm -r --cached .
+  #- git add .
+  #- git commit -m 'update .gitignore'
 install:
   - go get -v github.com/golang/lint/golint
- #- go get -v github.com/wangduotj/gmsm/gmssl    
+  #- go get -v github.com/wangduotj/gmsm/gmssl  
   - go get -d -t -v ./...
   - go build -v ./...
 
@@ -15,6 +18,7 @@ script:
   - go vet ./...
   - $HOME/gopath/bin/golint .
   - go test -v ./...
+
 
 notifications:
   email: false
