@@ -13,9 +13,9 @@ install:
   #- go get -d -t -v ./tree/develop/sm2
   #- go get -d -t -v ./tree/develop/sm3
   #- go get -d -t -v ./tree/develop/sm4
-  - go build -v ./tree/develop/sm2
-  - go build -v ./tree/develop/sm3
-  - go build -v ./tree/develop/sm4
+  - go build -v ./sm2
+  - go build -v ./sm3
+  - go build -v ./sm4
 
 script:
   - go vet ./tree/develop/sm2
