@@ -29,7 +29,6 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	/* 如果生成文件则travils不能通过测试
 	ok, err := sm2.WritePrivateKeytoPem("priv.pem", priv) // 生成密钥文件
 	if ok != true {
 		log.Fatal(err)
@@ -73,5 +72,4 @@ func TestSm2(t *testing.T) {
 	} else {
 		fmt.Printf("Verify ok")
 	}
-	*/
 }
