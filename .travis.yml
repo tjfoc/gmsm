@@ -22,7 +22,7 @@ script:
   - go vet ./sm3
   - go vet ./sm4
   - $HOME/gopath/bin/golint .
- # - go test -v ./sm2
+  - go test -v ./sm2
   - go test -v ./sm3
   - go test -v ./sm4
 
