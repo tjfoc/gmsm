@@ -18,13 +18,13 @@ install:
   - go build -v ./sm4
 
 script:
-  - go vet ./tree/develop/sm2
-  - go vet ./tree/develop/sm3
-  - go vet ./tree/develop/sm4
+  - go vet ./sm2
+  - go vet ./sm3
+  - go vet ./sm4
   - $HOME/gopath/bin/golint .
-  - go test -v ./tree/develop/sm2
-  - go test -v ./tree/develop/sm3
-  - go test -v ./tree/develop/sm4
+  - go test -v ./sm2
+  - go test -v ./sm3
+  - go test -v ./sm4
 
 
 notifications:
