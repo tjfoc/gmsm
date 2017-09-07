@@ -10,9 +10,9 @@ go:
   #- git commit -m 'update .gitignore'
 install:
   - go get -v github.com/golang/lint
-  - go get -d -t -v ./tree/develop/sm2
-  - go get -d -t -v ./tree/develop/sm3
-  - go get -d -t -v ./tree/develop/sm4
+  #- go get -d -t -v ./tree/develop/sm2
+  #- go get -d -t -v ./tree/develop/sm3
+  #- go get -d -t -v ./tree/develop/sm4
   - go build -v ./tree/develop/sm2
   - go build -v ./tree/develop/sm3
   - go build -v ./tree/develop/sm4
