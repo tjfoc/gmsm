@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package p256
+package sm2
 
 import (
 	"crypto/elliptic"
