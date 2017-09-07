@@ -10,10 +10,10 @@ go:
   #- git commit -m 'update .gitignore'
 install:
   - go get -v github.com/golang/lint/golint
-  #- go get -d -t -v ./sm2
+  - go get -d -t -v ./sm2
   - go get -d -t -v ./sm3
-  #- go get -d -t -v ./tree/develop/sm4
-  #- go build -v ./sm2
+  - go get -d -t -v ./sm4
+  - go build -v ./sm2
   - go build -v ./sm3
   - go build -v ./sm4
 
@@ -22,7 +22,7 @@ script:
   - go vet ./sm3
   - go vet ./sm4
   - $HOME/gopath/bin/golint .
-  - go test -v ./sm2
+  #- go test -v ./sm2
   - go test -v ./sm3
   - go test -v ./sm4
 
