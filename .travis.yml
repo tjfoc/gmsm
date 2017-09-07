@@ -26,6 +26,10 @@ script:
   - go test -v ./sm3
   - go test -v ./sm4
 
+after_failure:
+
+ - |
+  echo "Error!"
 
 notifications:
   email: false
