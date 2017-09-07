@@ -29,10 +29,12 @@ func byteToString(b []byte) string {
 }
 func TestSm3(t *testing.T) {
 	msg := []byte("test")
-	err := ioutil.WriteFile("ifile", msg, os.FileMode(0644)) // 生成测试文件
-	if err != nil {
-		log.Fatal(err)
-	}
+	/*
+		err := ioutil.WriteFile("ifile", msg, os.FileMode(0644)) // 生成测试文件
+		if err != nil {
+			log.Fatal(err)
+		}
+	*/
 	hw := sm3.NewSM3()
 	hw.Write(msg)
 	hash := hw.Sum(nil)
