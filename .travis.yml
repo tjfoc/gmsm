@@ -9,7 +9,7 @@ go:
   #- git add .
   #- git commit -m 'update .gitignore'
 install:
-  - go get -v github.com/golang/lint
+  - go get -v github.com/golang/lint/golint
   #- go get -d -t -v ./tree/develop/sm2
   #- go get -d -t -v ./tree/develop/sm3
   #- go get -d -t -v ./tree/develop/sm4
