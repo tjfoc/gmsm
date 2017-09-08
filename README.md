@@ -2,7 +2,7 @@
 GM SM2/3/4 library based on Golang
 
 Process Results
-[![Build Status](https://travis-ci.org/tjfoc/gmsm.svg?branch=master)](https://travis-ci.org/tjfoc/gmsm)
+[![Build Status](https://travis-ci.org/tjfoc/gmsm.svg?branch=develop)](https://travis-ci.org/tjfoc/gmsm)
 
 
 Copyright Suzhou Tongji Fintech Research Institute 2017 All Rights Reserved.
