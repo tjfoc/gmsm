@@ -10,14 +10,9 @@ go:
   #- git commit -m 'update .gitignore'
 install:
   - go get -v github.com/golang/lint/golint
-<<<<<<< HEAD
-  #- go get -d -t -v ./sm3
-  # - go get -d -t -v ./sm4
-=======
   #- go get -d -t -v github.com/LuckyZhiQiang/gmsm/tree/develop/sm2
   #- go get -d -t -v ./sm3export GOROOT=/home/robin/go
   #- go get -d -t -v ./sm4
->>>>>>> develop
   - go build -v ./sm2
   - go build -v ./sm3
   - go build -v ./sm4
@@ -26,9 +21,6 @@ script:
   - go vet ./sm2
   - go vet ./sm3
   - go vet ./sm4
-<<<<<<< HEAD
-  - $HOME/gopath/bin/golint .
-=======
   - $HOME/gopath/bin/golint . 
   - export GOPATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace:$GOPATH"
   - export PATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace/bin:$PATH"
@@ -39,18 +31,14 @@ script:
   - echo $PWD
   - echo $PATH
   - echo $GOPATH
->>>>>>> develop
   - go test -v ./sm2
   - go test -v ./sm3
   - go test -v ./sm4
 
-<<<<<<< HEAD
-=======
 after_failure:
 
  - |
   echo "Error!"
->>>>>>> develop
 
 notifications:
   email: false
