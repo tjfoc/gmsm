@@ -39,10 +39,7 @@ func (sm3 *SM3) p0(x uint32) uint32 { return x ^ sm3.leftRotate(x, 9) ^ sm3.left
 
 func (sm3 *SM3) p1(x uint32) uint32 { return x ^ sm3.leftRotate(x, 15) ^ sm3.leftRotate(x, 23) }
 
-func (sm3 *SM3) leftRotate(x uint32, i uint32) uint32 {
-	i %= 32
-	return (x<<i | x>>(32-i))
-}
+func (sm3 *SM3) leftRotate(x uint32, i uint32) uint32 { return (x<<(i%32) | x>>(32-i%32)) }
 
 func (sm3 *SM3) pad() []byte {
 	msg := sm3.unhandleMsg
