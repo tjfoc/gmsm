@@ -1,3 +1,18 @@
+/*
+Copyright Suzhou Tongji Fintech Research Institute 2017 All Rights Reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+                 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package sm2
 
 import (
@@ -246,13 +261,13 @@ func parsePKCS8UnecryptedPrivateKey(der []byte) (*PrivateKey, error) {
 func parsePKCS8EcryptedPrivateKey(der, pwd []byte) (*PrivateKey, error) {
 	var privKey encryptedPrivateKeyInfo
 	if _, err := asn1.Unmarshal(der, &privKey); err != nil {
-		return nil, errors.New("pkcs8: only PKCS #5 v2.0 supported")
+		return nil, errors.New("pkcs8: don't supported")
 	}
 	if !privKey.EncryptionAlgorithm.IdPBES2.Equal(oidPBES2) {
-		return nil, errors.New("pkcs8: only PBES2 supported")
+		return nil, errors.New("pkcs8: don't supported")
 	}
 	if !privKey.EncryptionAlgorithm.PBES2Params.KeyDerivationFunc.IdPBKDF2.Equal(oidPKCS5PBKDF2) {
-		return nil, errors.New("pkcs8: only PBKDF2 supported")
+		return nil, errors.New("pkcs8: don't supported")
 	}
 	encParam := privKey.EncryptionAlgorithm.PBES2Params.EncryptionScheme
 	kdfParam := privKey.EncryptionAlgorithm.PBES2Params.KeyDerivationFunc.PBKDF2Params
