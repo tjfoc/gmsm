@@ -41,7 +41,7 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	priv, err = ReadPrivateKeyFromPem("key.pem", []byte("123456")) // 读取密钥
+	priv, err = ReadPrivateKeyFromPem("priv.pem", []byte("123456")) // 读取密钥
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestSm2(t *testing.T) {
 		log.Fatal(err)
 	}
 	fmt.Printf("public data+++++++++++\n%v\n+++++++++++++++\n", data)
-	privKey, err := ReadPrivateKeyFromPem("key.pem", []byte("123456")) // 读取密钥
+	privKey, err := ReadPrivateKeyFromPem("priv.pem", []byte("123456")) // 读取密钥
 	if err != nil {
 		log.Fatal(err)
 	}
