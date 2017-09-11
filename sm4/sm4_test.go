@@ -17,7 +17,6 @@ package sm4
 
 import (
 	"fmt"
-	"sm4"
 	"testing"
 )
 
@@ -25,9 +24,9 @@ func TestSM4(t *testing.T) {
 	data := []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10}
 	key := data
 	d0 := make([]byte, 16)
-	sm4.EncryptBlock(key, d0, data)
+	EncryptBlock(key, d0, data)
 	fmt.Printf("d0 = %x\n", d0)
 	d1 := make([]byte, 16)
-	sm4.DecryptBlock(key, d1, d0)
+	DecryptBlock(key, d1, d0)
 	fmt.Printf("d1 = %x\n", d1)
 }
