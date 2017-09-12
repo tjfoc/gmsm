@@ -45,11 +45,11 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ok, err = WritePublicKeytoPem("pub.pem", priv.Public()) // 生成证书文件
+	ok, err = WritePublicKeytoPem("pub.pem", priv.Public(), nil) // 生成证书文件
 	if ok != true {
 		log.Fatal(err)
 	}
-	data, err = WritePublicKeytoMem(priv.Public())
+	data, err = WritePublicKeytoMem(priv.Public(), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	pubKey, err := ReadPublicKeyFromPem("pub.pem") // 读取公钥
+	pubKey, err := ReadPublicKeyFromPem("pub.pem", nil) // 读取公钥
 	if err != nil {
 		log.Fatal(err)
 	}

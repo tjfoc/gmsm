@@ -15,6 +15,11 @@ limitations under the License.
 
 package sm4
 
+import (
+	"io/ioutil"
+	"os"
+)
+
 // sm4密钥参量
 var fk = [4]uint32{
 	0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc,
@@ -124,4 +129,28 @@ func EncryptBlock(key []byte, dst, src []byte) {
 func DecryptBlock(key []byte, dst, src []byte) {
 	subkeys := generateSubKeys(key)
 	cryptBlock(subkeys, dst, src, true)
+}
+
+func ReadKeyFromMem(key []byte, _ []byte) ([]byte, error) {
+	return key, nil
+}
+
+func ReadKeyFromPem(FileName string, _ []byte) ([]byte, error) {
+	key, err := ioutil.ReadFile(FileName)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func WriteKeytoMem(key, _ []byte) ([]byte, error) {
+	return key, nil
+}
+
+func WriteKeyToPem(FileName string, key, _ []byte) (bool, error) {
+	err := ioutil.WriteFile(FileName, key, os.FileMode(0666))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

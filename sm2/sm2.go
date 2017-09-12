@@ -64,13 +64,13 @@ func (priv *PrivateKey) Sign(msg []byte) ([]byte, error) {
 	return asn1.Marshal(sm2Signature{r, s})
 }
 
-func (pub *PublicKey) Verify(hash []byte, sign []byte) bool {
+func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 	var sm2Sign sm2Signature
 	_, err := asn1.Unmarshal(sign, &sm2Sign)
 	if err != nil {
 		return false
 	}
-	return Verify(pub, hash, sm2Sign.R, sm2Sign.S)
+	return Verify(pub, msg, sm2Sign.R, sm2Sign.S)
 }
 
 var one = new(big.Int).SetInt64(1)
