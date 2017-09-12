@@ -337,7 +337,9 @@ func marshalSm2EcryptedPrivateKey(PrivKey *PrivateKey, pwd []byte) ([]byte, erro
 	mode.CryptBlocks(encryptedKey, der)
 	var rawValue asn1.RawValue
 	rawValue.Tag = 5
+	rawValue.Class = 0
 	rawValue.IsCompound = false
+	rawValue.Bytes = []byte{}
 	rawValue.FullBytes = []byte{5, 0}
 	keyDerivationFunc := Pbes2KDfs{
 		oidPBKDF2,
