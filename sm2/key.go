@@ -335,33 +335,17 @@ func marshalSm2EcryptedPrivateKey(PrivKey *PrivateKey, pwd []byte) ([]byte, erro
 	}
 	mode := cipher.NewCBCEncrypter(block, iv)
 	mode.CryptBlocks(encryptedKey, der)
-	/*
-		var rawValue asn1.RawValue
-		rawValue.Tag = 5
-		rawValue.IsCompound = false
-		rawValue.FullBytes = []byte{5, 0}
-	*/
-	/*
-		var algorithmIdentifier pkix.AlgorithmIdentifier
-		algorithmIdentifier.Algorithm = oidSHA1
-		algorithmIdentifier.Parameters.Tag = 5
-		algorithmIdentifier.Parameters.IsCompound = false
-		algorithmIdentifier.Parameters.FullBytes = []byte{5, 0}
-	*/
+	var algorithmIdentifier pkix.AlgorithmIdentifier
+	algorithmIdentifier.Algorithm = oidSHA1
+	algorithmIdentifier.Parameters.Tag = 5
+	algorithmIdentifier.Parameters.IsCompound = false
+	algorithmIdentifier.Parameters.FullBytes = []byte{5, 0}
 	keyDerivationFunc := Pbes2KDfs{
 		oidPBKDF2,
 		Pkdf2Params{
 			salt,
 			iter,
-			//	algorithmIdentifier,
-			pkix.AlgorithmIdentifier{
-				oidSHA1,
-				asn1.RawValue{
-					Tag:        5,
-					IsCompound: false,
-					FullBytes:  []byte{5, 0},
-				},
-			},
+			algorithmIdentifier,
 		},
 	}
 	encryptionScheme := Pbes2Encs{
