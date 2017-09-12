@@ -346,7 +346,7 @@ func marshalSm2EcryptedPrivateKey(PrivKey *PrivateKey, pwd []byte) ([]byte, erro
 		Pkdf2Params{
 			salt,
 			iter,
-			pkix.AlgorithmIdentifier{
+			AlgorithmIdentifier{
 				oidSHA1,
 				asn1.RawValue{
 					Tag:        5,
