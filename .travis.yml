@@ -24,9 +24,9 @@ script:
   - $HOME/gopath/bin/golint . 
   - export GOPATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace:$GOPATH"
   - export PATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace/bin:$PATH"
-  - go test -v ./sm2
-  - go test -v ./sm3
-  - go test -v ./sm4
+  - go test ./sm2
+  - go test ./sm3
+  - go test ./sm4
 
 after_failure:
 
