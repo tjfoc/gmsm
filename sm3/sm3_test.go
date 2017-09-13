@@ -16,7 +16,9 @@ package sm3
 
 import (
 	"fmt"
-	"sm3"
+	"io/ioutil"
+	"log"
+	"os"
 	"testing"
 )
 
@@ -29,19 +31,20 @@ func byteToString(b []byte) string {
 }
 func TestSm3(t *testing.T) {
 	msg := []byte("test")
-	/*
-		err := ioutil.WriteFile("ifile", msg, os.FileMode(0644)) // 生成测试文件
-		if err != nil {
-			log.Fatal(err)
-		}
-	*/
-	hw := sm3.NewSM3()
+	err := ioutil.WriteFile("ifile", msg, os.FileMode(0644)) // 生成测试文件
+	if err != nil {
+		log.Fatal(err)
+	}
+	msg, err = ioutil.ReadFile("ifile")
+	if err != nil {
+		log.Fatal(err)
+	}
+	hw := NewSM3()
 	hw.Write(msg)
 	hash := hw.Sum(nil)
-	//	hash := sm3.Sm3Sum(msg)
 	fmt.Println(hash)
 	fmt.Printf("%s\n", byteToString(hash))
-	hash1 := sm3.Sm3Sum(msg)
+	hash1 := Sm3Sum(msg)
 	fmt.Println(hash1)
 	fmt.Printf("%s\n", byteToString(hash1))
 

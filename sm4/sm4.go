@@ -15,6 +15,17 @@ limitations under the License.
 
 package sm4
 
+import (
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
+	"io/ioutil"
+	"os"
+)
+
+type SM4Key []byte
+
 // sm4密钥参量
 var fk = [4]uint32{
 	0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc,
@@ -116,12 +127,86 @@ func generateSubKeys(key []byte) []uint32 {
 	return subkeys
 }
 
-func EncryptBlock(key []byte, dst, src []byte) {
+func EncryptBlock(key SM4Key, dst, src []byte) {
 	subkeys := generateSubKeys(key)
 	cryptBlock(subkeys, dst, src, false)
 }
 
-func DecryptBlock(key []byte, dst, src []byte) {
+func DecryptBlock(key SM4Key, dst, src []byte) {
 	subkeys := generateSubKeys(key)
 	cryptBlock(subkeys, dst, src, true)
+}
+
+func ReadKeyFromMem(data []byte, pwd []byte) (SM4Key, error) {
+	block, _ := pem.Decode(data)
+	if x509.IsEncryptedPEMBlock(block) {
+		if block.Type != "SM4 ENCRYPTED KEY" {
+			return nil, errors.New("SM4: unknown type")
+		}
+		if pwd == nil {
+			return nil, errors.New("SM4: need passwd")
+		}
+		data, err := x509.DecryptPEMBlock(block, pwd)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	if block.Type != "SM4 KEY" {
+		return nil, errors.New("SM4: unknown type")
+	}
+	return block.Bytes, nil
+}
+
+func ReadKeyFromPem(FileName string, pwd []byte) (SM4Key, error) {
+	data, err := ioutil.ReadFile(FileName)
+	if err != nil {
+		return nil, err
+	}
+	return ReadKeyFromMem(data, pwd)
+}
+
+func WriteKeytoMem(key SM4Key, pwd []byte) ([]byte, error) {
+	if pwd != nil {
+		block, err := x509.EncryptPEMBlock(rand.Reader,
+			"SM4 ENCRYPTED KEY", key, pwd, x509.PEMCipherAES256)
+		if err != nil {
+			return nil, err
+		}
+		return pem.EncodeToMemory(block), nil
+	} else {
+		block := &pem.Block{
+			Type:  "SM4 KEY",
+			Bytes: key,
+		}
+		return pem.EncodeToMemory(block), nil
+	}
+}
+
+func WriteKeyToPem(FileName string, key SM4Key, pwd []byte) (bool, error) {
+	var block *pem.Block
+
+	if pwd != nil {
+		var err error
+		block, err = x509.EncryptPEMBlock(rand.Reader,
+			"SM4 ENCRYPTED KEY", key, pwd, x509.PEMCipherAES256)
+		if err != nil {
+			return false, err
+		}
+	} else {
+		block = &pem.Block{
+			Type:  "SM4 KEY",
+			Bytes: key,
+		}
+	}
+	file, err := os.Create(FileName)
+	defer file.Close()
+	if err != nil {
+		return false, err
+	}
+	err = pem.Encode(file, block)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
 }

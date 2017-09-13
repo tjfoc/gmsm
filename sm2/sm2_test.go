@@ -20,28 +20,45 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"sm2"
 	"testing"
 )
 
 func TestSm2(t *testing.T) {
-	priv, err := sm2.GenerateKey() // 生成密钥对
+	priv, err := GenerateKey() // 生成密钥对
 	if err != nil {
 		log.Fatal(err)
 	}
-	ok, err := sm2.WritePrivateKeytoPem("priv.pem", priv) // 生成密钥文件
+	ok, err := WritePrivateKeytoPem("priv.pem", priv, []byte("123456")) // 生成密钥文件
 	if ok != true {
 		log.Fatal(err)
 	}
-	ok, err = sm2.WritePublicKeytoPem("pub.pem", priv.Public()) // 生成证书文件
-	if ok != true {
-		log.Fatal(err)
-	}
-	privKey, err := sm2.ReadPrivateKeyFromPem("priv.pem") // 读取密钥
+	data, err := WritePrivateKeytoMem(priv, []byte("123456"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	pubKey, err := sm2.ReadPublicKeyFromPem("pub.pem") // 读取公钥
+	fmt.Printf("priv data+++++++++++++++++\n%v\n++++++++++++++\n", data)
+	_, err = ReadPrivateKeyFromPem("priv.pem", []byte("123456")) // 读取密钥
+	if err != nil {
+		log.Fatal(err)
+	}
+	priv, err = ReadPrivateKeyFromPem("priv.pem", []byte("123456")) // 读取密钥
+	if err != nil {
+		log.Fatal(err)
+	}
+	ok, err = WritePublicKeytoPem("pub.pem", priv.Public(), nil) // 生成证书文件
+	if ok != true {
+		log.Fatal(err)
+	}
+	data, err = WritePublicKeytoMem(priv.Public(), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("public data+++++++++++\n%v\n+++++++++++++++\n", data)
+	privKey, err := ReadPrivateKeyFromPem("priv.pem", []byte("123456")) // 读取密钥
+	if err != nil {
+		log.Fatal(err)
+	}
+	pubKey, err := ReadPublicKeyFromPem("pub.pem", nil) // 读取公钥
 	if err != nil {
 		log.Fatal(err)
 	}
