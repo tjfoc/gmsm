@@ -9,6 +9,7 @@ go:
   #- git add .
   #- git commit -m 'update .gitignore'
 install:
+  - git checkout develop
   - go get -v github.com/golang/lint/golint
   #- go get -d -t -v github.com/LuckyZhiQiang/gmsm/tree/develop/sm2
   #- go get -d -t -v ./sm3export GOROOT=/home/robin/go
