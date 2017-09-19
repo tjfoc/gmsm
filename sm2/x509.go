@@ -1243,6 +1243,9 @@ func subjectBytes(cert *Certificate) ([]byte, error) {
 }
 
 func parseCertificateByStruct(in *certificate) (*Certificate, error) {
+	if !reflect.DeepEqual(in.TBSCertificate.PublicKey.Algorithm.Parameters.FullBytes, []byte{6, 8, 42, 129, 28, 207, 85, 1, 130, 45}) {
+		return nil, errors.New("Certificate: only support SM2")
+	}
 	out := new(Certificate)
 	out.Raw = in.Raw
 	out.RawTBSCertificate = in.TBSCertificate.Raw
@@ -1255,7 +1258,7 @@ func parseCertificateByStruct(in *certificate) (*Certificate, error) {
 	out.PublicKeyAlgorithm =
 		getPublicKeyAlgorithmFromOID(in.TBSCertificate.PublicKey.Algorithm.Algorithm)
 	if out.PublicKeyAlgorithm != 3 {
-		return nil, errors.New("CertificateRequest: only support SM2")
+		return nil, errors.New("Certificate: only support SM2")
 	}
 	curve := P256Sm2()
 	x, y := elliptic.Unmarshal(curve, in.TBSCertificate.PublicKey.PublicKey.RightAlign())
@@ -1647,6 +1650,9 @@ func parseCertificateRequestByStruct(in *certificateRequest) (*CertificateReques
 		Attributes:               parseRawAttributes(in.TBSCSR.RawAttributes),
 	}
 	if out.PublicKeyAlgorithm != 3 {
+		return nil, errors.New("CertificateRequest: only support SM2")
+	}
+	if !reflect.DeepEqual(in.TBSCSR.PublicKey.Algorithm.Parameters.FullBytes, []byte{6, 8, 42, 129, 28, 207, 85, 1, 130, 45}) {
 		return nil, errors.New("CertificateRequest: only support SM2")
 	}
 	curve := P256Sm2()

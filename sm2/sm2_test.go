@@ -66,15 +66,15 @@ func TestSm2(t *testing.T) {
 	signdata, _ := ioutil.ReadFile("ofile")
 	ok = privKey.Verify(msg, signdata) // 密钥验证
 	if ok != true {
-		fmt.Printf("Verify error")
+		fmt.Printf("Verify error\n")
 	} else {
-		fmt.Printf("Verify ok")
+		fmt.Printf("Verify ok\n")
 	}
 	ok = pubKey.Verify(msg, signdata) // 公钥验证
 	if ok != true {
-		fmt.Printf("Verify error")
+		fmt.Printf("Verify error\n")
 	} else {
-		fmt.Printf("Verify ok")
+		fmt.Printf("Verify ok\n")
 	}
 	templateReq := CertificateRequest{
 		Subject: pkix.Name{
