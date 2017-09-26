@@ -1569,7 +1569,7 @@ func CreateCertificate(rand io.Reader, template, parent *Certificate,
 		return nil, err
 	}
 	var publicKeyAlgorithm pkix.AlgorithmIdentifier
-	publicKeyBytes := elliptic.Marshal(privKey.Curve, privKey.X, privKey.Y)
+	publicKeyBytes := elliptic.Marshal(pubKey.Curve, pubKey.X, pubKey.Y)
 	publicKeyAlgorithm.Algorithm = oidSM2
 	publicKeyAlgorithm.Parameters.Class = 0
 	publicKeyAlgorithm.Parameters.Tag = 6
