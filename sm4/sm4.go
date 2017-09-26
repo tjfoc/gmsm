@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -128,7 +129,9 @@ func generateSubKeys(key []byte) []uint32 {
 }
 
 func EncryptBlock(key SM4Key, dst, src []byte) {
+	fmt.Printf("begin gennerate key = %v\n", key)
 	subkeys := generateSubKeys(key)
+	fmt.Printf("subkeys = %v\n", subkeys)
 	cryptBlock(subkeys, dst, src, false)
 }
 
@@ -200,10 +203,10 @@ func WriteKeyToPem(FileName string, key SM4Key, pwd []byte) (bool, error) {
 		}
 	}
 	file, err := os.Create(FileName)
-	defer file.Close()
 	if err != nil {
 		return false, err
 	}
+	defer file.Close()
 	err = pem.Encode(file, block)
 	if err != nil {
 		return false, nil

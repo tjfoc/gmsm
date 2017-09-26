@@ -16,11 +16,16 @@ limitations under the License.
 package sm2
 
 import (
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/big"
+	"net"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestSm2(t *testing.T) {
@@ -28,38 +33,12 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ok, err := WritePrivateKeytoPem("priv.pem", priv, []byte("123456")) // 生成密钥文件
+	ok, err := WritePrivateKeytoPem("priv.pem", priv, nil) // 生成密钥文件
 	if ok != true {
 		log.Fatal(err)
 	}
-	data, err := WritePrivateKeytoMem(priv, []byte("123456"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("priv data+++++++++++++++++\n%v\n++++++++++++++\n", data)
-	_, err = ReadPrivateKeyFromPem("priv.pem", []byte("123456")) // 读取密钥
-	if err != nil {
-		log.Fatal(err)
-	}
-	priv, err = ReadPrivateKeyFromPem("priv.pem", []byte("123456")) // 读取密钥
-	if err != nil {
-		log.Fatal(err)
-	}
-	ok, err = WritePublicKeytoPem("pub.pem", priv.Public(), nil) // 生成证书文件
+	ok, err = WritePublicKeytoPem("pub.pem", priv.Public(), nil) // 生成公钥文件
 	if ok != true {
-		log.Fatal(err)
-	}
-	data, err = WritePublicKeytoMem(priv.Public(), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("public data+++++++++++\n%v\n+++++++++++++++\n", data)
-	privKey, err := ReadPrivateKeyFromPem("priv.pem", []byte("123456")) // 读取密钥
-	if err != nil {
-		log.Fatal(err)
-	}
-	pubKey, err := ReadPublicKeyFromPem("pub.pem", nil) // 读取公钥
-	if err != nil {
 		log.Fatal(err)
 	}
 	msg := []byte("test")
@@ -67,8 +46,16 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	msg, _ = ioutil.ReadFile("ifile")
-	sign, err := privKey.Sign(msg) // 签名
+	privKey, err := ReadPrivateKeyFromPem("priv.pem", nil) // 读取密钥
+	if err != nil {
+		log.Fatal(err)
+	}
+	pubKey, err := ReadPublicKeyFromPem("pub.pem", nil) // 读取公钥
+	if err != nil {
+		log.Fatal(err)
+	}
+	msg, _ = ioutil.ReadFile("ifile") // 从文件读取数据
+	sign, err := privKey.Sign(msg)    // 签名
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,14 +66,114 @@ func TestSm2(t *testing.T) {
 	signdata, _ := ioutil.ReadFile("ofile")
 	ok = privKey.Verify(msg, signdata) // 密钥验证
 	if ok != true {
-		fmt.Printf("Verify error")
+		fmt.Printf("Verify error\n")
 	} else {
-		fmt.Printf("Verify ok")
+		fmt.Printf("Verify ok\n")
 	}
 	ok = pubKey.Verify(msg, signdata) // 公钥验证
 	if ok != true {
-		fmt.Printf("Verify error")
+		fmt.Printf("Verify error\n")
 	} else {
-		fmt.Printf("Verify ok")
+		fmt.Printf("Verify ok\n")
+	}
+	templateReq := CertificateRequest{
+		Subject: pkix.Name{
+			CommonName:   "test.example.com",
+			Organization: []string{"Test"},
+		},
+		SignatureAlgorithm: SM2WithSHA256,
+	}
+	_, err = CreateCertificateRequestToPem("req.pem", &templateReq, privKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req, err := ReadCertificateRequestFromPem("req.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = req.CheckSignature()
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Printf("CheckSignature ok\n")
+	}
+	testExtKeyUsage := []ExtKeyUsage{ExtKeyUsageClientAuth, ExtKeyUsageServerAuth}
+	testUnknownExtKeyUsage := []asn1.ObjectIdentifier{[]int{1, 2, 3}, []int{2, 59, 1}}
+	extraExtensionData := []byte("extra extension")
+	commonName := "test.example.com"
+	template := Certificate{
+		// SerialNumber is negative to ensure that negative
+		// values are parsed. This is due to the prevalence of
+		// buggy code that produces certificates with negative
+		// serial numbers.
+		SerialNumber: big.NewInt(-1),
+		Subject: pkix.Name{
+			CommonName:   commonName,
+			Organization: []string{"TEST"},
+			Country:      []string{"China"},
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{
+					Type:  []int{2, 5, 4, 42},
+					Value: "Gopher",
+				},
+				// This should override the Country, above.
+				{
+					Type:  []int{2, 5, 4, 6},
+					Value: "NL",
+				},
+			},
+		},
+		NotBefore: time.Unix(1000, 0),
+		NotAfter:  time.Unix(100000, 0),
+
+		SignatureAlgorithm: SM2WithSHA256,
+
+		SubjectKeyId: []byte{1, 2, 3, 4},
+		KeyUsage:     KeyUsageCertSign,
+
+		ExtKeyUsage:        testExtKeyUsage,
+		UnknownExtKeyUsage: testUnknownExtKeyUsage,
+
+		BasicConstraintsValid: true,
+		IsCA: true,
+
+		OCSPServer:            []string{"http://ocsp.example.com"},
+		IssuingCertificateURL: []string{"http://crt.example.com/ca1.crt"},
+
+		DNSNames:       []string{"test.example.com"},
+		EmailAddresses: []string{"gopher@golang.org"},
+		IPAddresses:    []net.IP{net.IPv4(127, 0, 0, 1).To4(), net.ParseIP("2001:4860:0:2001::68")},
+
+		PolicyIdentifiers:   []asn1.ObjectIdentifier{[]int{1, 2, 3}},
+		PermittedDNSDomains: []string{".example.com", "example.com"},
+
+		CRLDistributionPoints: []string{"http://crl1.example.com/ca1.crl", "http://crl2.example.com/ca1.crl"},
+
+		ExtraExtensions: []pkix.Extension{
+			{
+				Id:    []int{1, 2, 3, 4},
+				Value: extraExtensionData,
+			},
+			// This extension should override the SubjectKeyId, above.
+			{
+				Id:       oidExtensionSubjectKeyId,
+				Critical: false,
+				Value:    []byte{0x04, 0x04, 4, 3, 2, 1},
+			},
+		},
+	}
+	ok, _ = CreateCertificateToPem("cert.pem", &template, &template, priv.Public(), privKey)
+	if ok != true {
+		fmt.Printf("failed to create cert file\n")
+	}
+	cert, err := ReadCertificateFromPem("cert.pem")
+	if err != nil {
+		fmt.Printf("failed to read cert file")
+	}
+	err = cert.CheckSignature(cert.SignatureAlgorithm, cert.RawTBSCertificate, cert.Signature)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Printf("CheckSignature ok\n")
 	}
 }
