@@ -33,7 +33,7 @@ after_failure:
   echo "Error!"
 
 notifications:
-  email: true
+  email:
     recipients:
       - zhiqiang@tj-fintech.com
       - yanwenze@tj-fintech.com
