@@ -34,3 +34,12 @@ after_failure:
 
 notifications:
   email: true
+    recipients:
+      - zhiqiang@tj-fintech.com
+      - yanwenze@tj-fintech.com
+      - yewei@tj-fintech.com
+      
+    on_success: never # default: change
+    on_failure: always # default: always
+
+      
