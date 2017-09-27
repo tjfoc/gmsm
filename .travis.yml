@@ -39,7 +39,7 @@ notifications:
       - yanwenze@tj-fintech.com
       - yewei@tj-fintech.com
       
-    on_success: never # default: change
+    on_success: always # default: change
     on_failure: always # default: always
 
       
