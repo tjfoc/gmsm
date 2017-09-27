@@ -33,4 +33,4 @@ after_failure:
   echo "Error!"
 
 notifications:
-  email: false
+  email: true
