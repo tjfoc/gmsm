@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-                 http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,7 @@ package sm2
 
 // reference to ecdsa
 import (
+	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/elliptic"
@@ -51,12 +52,12 @@ type sm2Signature struct {
 }
 
 // The SM2's private key contains the public key
-func (priv *PrivateKey) Public() *PublicKey {
+func (priv *PrivateKey) Public() crypto.PublicKey {
 	return &priv.PublicKey
 }
 
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
-func (priv *PrivateKey) Sign(msg []byte) ([]byte, error) {
+func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
 	r, s, err := Sign(priv, msg)
 	if err != nil {
 		return nil, err

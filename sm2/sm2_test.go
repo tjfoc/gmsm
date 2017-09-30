@@ -16,6 +16,7 @@ limitations under the License.
 package sm2
 
 import (
+	"crypto/rand"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"fmt"
@@ -37,7 +38,8 @@ func TestSm2(t *testing.T) {
 	if ok != true {
 		log.Fatal(err)
 	}
-	ok, err = WritePublicKeytoPem("pub.pem", priv.Public(), nil) // 生成公钥文件
+	pubKey, _ := priv.Public().(*PublicKey)
+	ok, err = WritePublicKeytoPem("pub.pem", pubKey, nil) // 生成公钥文件
 	if ok != true {
 		log.Fatal(err)
 	}
@@ -50,12 +52,12 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	pubKey, err := ReadPublicKeyFromPem("pub.pem", nil) // 读取公钥
+	pubKey, err = ReadPublicKeyFromPem("pub.pem", nil) // 读取公钥
 	if err != nil {
 		log.Fatal(err)
 	}
-	msg, _ = ioutil.ReadFile("ifile") // 从文件读取数据
-	sign, err := privKey.Sign(msg)    // 签名
+	msg, _ = ioutil.ReadFile("ifile")                // 从文件读取数据
+	sign, err := privKey.Sign(rand.Reader, msg, nil) // 签名
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +83,7 @@ func TestSm2(t *testing.T) {
 			CommonName:   "test.example.com",
 			Organization: []string{"Test"},
 		},
-		SignatureAlgorithm: SM2WithSHA256,
+		SignatureAlgorithm: ECDSAWithSHA256,
 	}
 	_, err = CreateCertificateRequestToPem("req.pem", &templateReq, privKey)
 	if err != nil {
@@ -126,7 +128,7 @@ func TestSm2(t *testing.T) {
 		NotBefore: time.Unix(1000, 0),
 		NotAfter:  time.Unix(100000, 0),
 
-		SignatureAlgorithm: SM2WithSHA256,
+		SignatureAlgorithm: ECDSAWithSHA256,
 
 		SubjectKeyId: []byte{1, 2, 3, 4},
 		KeyUsage:     KeyUsageCertSign,
@@ -162,7 +164,8 @@ func TestSm2(t *testing.T) {
 			},
 		},
 	}
-	ok, _ = CreateCertificateToPem("cert.pem", &template, &template, priv.Public(), privKey)
+	pubKey, _ = priv.Public().(*PublicKey)
+	ok, _ = CreateCertificateToPem("cert.pem", &template, &template, pubKey, privKey)
 	if ok != true {
 		fmt.Printf("failed to create cert file\n")
 	}
