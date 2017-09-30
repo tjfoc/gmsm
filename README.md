@@ -1,18 +1,13 @@
 
 GM SM2/3/4 library based on Golang
 
-<<<<<<< HEAD
 Process Results
 [![Build Status](https://travis-ci.org/tjfoc/gmsm.svg?branch=master)](https://travis-ci.org/tjfoc/gmsm)
-=======
 
 基于Go语言的国密SM2/SM3/SM4加密算法库
 
 版权所有 苏州同济区块链研究院有限公司(http://www.tj-fintech.com)
->>>>>>> develop
 
-
-Process Results [![Build Status](https://travis-ci.org/tjfoc/gmsm.svg?branch=develop)](https://travis-ci.org/tjfoc/gmsm)
 
 Copyright Suzhou Tongji Fintech Research Institute 2017 All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
