@@ -31,7 +31,6 @@ after_failure:
 
  - |
   echo "Error!"
-
 notifications:
   email:
     recipients:
@@ -43,4 +42,3 @@ notifications:
     on_success: never # default: change
     on_failure: always # default: always
 
-      

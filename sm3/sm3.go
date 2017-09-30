@@ -120,8 +120,9 @@ func (sm3 *SM3) update(msg []byte, nblocks int) {
 	sm3.digest[0], sm3.digest[1], sm3.digest[2], sm3.digest[3], sm3.digest[4], sm3.digest[5], sm3.digest[6], sm3.digest[7] = a, b, c, d, e, f, g, h
 }
 
-func NewSM3() hash.Hash {
+func New() hash.Hash {
 	var sm3 SM3
+
 	sm3.Reset()
 	return &sm3
 }
