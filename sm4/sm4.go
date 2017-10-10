@@ -35,6 +35,8 @@ type KeySizeError int
 // Cipher is an instance of SM4 encryption.
 type Sm4Cipher struct {
 	subkeys []uint32
+	block1  []uint32
+	block2  []byte
 }
 
 // sm4密钥参量
@@ -89,6 +91,7 @@ func p(a uint32) uint32 {
 	return (uint32(sbox[a>>24]) << 24) ^ (uint32(sbox[(a>>16)&0xff]) << 16) ^ (uint32(sbox[(a>>8)&0xff]) << 8) ^ uint32(sbox[(a)&0xff])
 }
 
+/*
 func permuteInitialBlock(block []byte) []uint32 {
 	b := make([]uint32, 4, 4)
 	for i := 0; i < 4; i++ {
@@ -123,10 +126,45 @@ func cryptBlock(subkeys []uint32, dst, src []byte, decrypt bool) {
 	b[0], b[1], b[2], b[3] = b[3], b[2], b[1], b[0]
 	copy(dst, permuteFinalBlock(b))
 }
+*/
+
+func permuteInitialBlock(b []uint32, block []byte) {
+	for i := 0; i < 4; i++ {
+		b[i] = (uint32(block[i*4]) << 24) | (uint32(block[i*4+1]) << 16) |
+			(uint32(block[i*4+2]) << 8) | (uint32(block[i*4+3]))
+	}
+}
+
+func permuteFinalBlock(b []byte, block []uint32) {
+	for i := 0; i < 4; i++ {
+		b[i*4] = uint8(block[i] >> 24)
+		b[i*4+1] = uint8(block[i] >> 16)
+		b[i*4+2] = uint8(block[i] >> 8)
+		b[i*4+3] = uint8(block[i])
+	}
+}
+func cryptBlock(subkeys []uint32, b []uint32, r []byte, dst, src []byte, decrypt bool) {
+	var tm uint32
+
+	permuteInitialBlock(b, src)
+	for i := 0; i < 32; i++ {
+		if decrypt {
+			tm = feistel1(b[0], b[1], b[2], b[3], subkeys[31-i])
+		} else {
+			tm = feistel1(b[0], b[1], b[2], b[3], subkeys[i])
+		}
+		b[0], b[1], b[2], b[3] = b[1], b[2], b[3], tm
+	}
+	b[0], b[1], b[2], b[3] = b[3], b[2], b[1], b[0]
+	permuteFinalBlock(r, b)
+	copy(dst, r)
+}
 
 func generateSubKeys(key []byte) []uint32 {
 	subkeys := make([]uint32, 32)
-	b := permuteInitialBlock(key)
+	b := make([]uint32, 4)
+	//	b := permuteInitialBlock(key)
+	permuteInitialBlock(b, key)
 	b[0] ^= fk[0]
 	b[1] ^= fk[1]
 	b[2] ^= fk[2]
@@ -140,12 +178,12 @@ func generateSubKeys(key []byte) []uint32 {
 
 func EncryptBlock(key SM4Key, dst, src []byte) {
 	subkeys := generateSubKeys(key)
-	cryptBlock(subkeys, dst, src, false)
+	cryptBlock(subkeys, make([]uint32, 4), make([]byte, 16), dst, src, false)
 }
 
 func DecryptBlock(key SM4Key, dst, src []byte) {
 	subkeys := generateSubKeys(key)
-	cryptBlock(subkeys, dst, src, true)
+	cryptBlock(subkeys, make([]uint32, 4), make([]byte, 16), dst, src, true)
 }
 
 func ReadKeyFromMem(data []byte, pwd []byte) (SM4Key, error) {
@@ -233,6 +271,8 @@ func NewCipher(key []byte) (cipher.Block, error) {
 	}
 	c := new(Sm4Cipher)
 	c.subkeys = generateSubKeys(key)
+	c.block1 = make([]uint32, 4)
+	c.block2 = make([]byte, 16)
 	return c, nil
 }
 
@@ -241,9 +281,9 @@ func (c *Sm4Cipher) BlockSize() int {
 }
 
 func (c *Sm4Cipher) Encrypt(dst, src []byte) {
-	cryptBlock(c.subkeys, dst, src, false)
+	cryptBlock(c.subkeys, c.block1, c.block2, dst, src, false)
 }
 
 func (c *Sm4Cipher) Decrypt(dst, src []byte) {
-	cryptBlock(c.subkeys, dst, src, true)
+	cryptBlock(c.subkeys, c.block1, c.block2, dst, src, true)
 }
