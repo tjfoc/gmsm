@@ -31,15 +31,15 @@ func TestSM4(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("data = %s\n", string(data))
+	fmt.Printf("data = %x\n", data)
 	c, err := NewCipher(key)
 	if err != nil {
 		log.Fatal(err)
 	}
 	d0 := make([]byte, 16)
 	c.Encrypt(d0, data)
-	fmt.Printf("d0 = %s\n", string(d0))
+	fmt.Printf("d0 = %x\n", d0)
 	d1 := make([]byte, 16)
 	c.Decrypt(d1, d0)
-	fmt.Printf("d1 = %s\n", string(d1))
+	fmt.Printf("d1 = %x\n", d1)
 }
