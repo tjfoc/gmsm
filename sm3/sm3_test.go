@@ -54,20 +54,10 @@ func TestSm3(t *testing.T) {
 func BenchmarkSm3(t *testing.B) {
 	t.ReportAllocs()
 	msg := []byte("test")
-	err := ioutil.WriteFile("ifile", msg, os.FileMode(0644)) // 生成测试文件
-	if err != nil {
-		log.Fatal(err)
-	}
-	msg, err = ioutil.ReadFile("ifile")
-	if err != nil {
-		log.Fatal(err)
-	}
 	hw := New()
-	hw.Write(msg)
-	hash := hw.Sum(nil)
-	fmt.Println(hash)
-	fmt.Printf("%s\n", byteToString(hash))
-	hash1 := Sm3Sum(msg)
-	fmt.Println(hash1)
-	fmt.Printf("%s\n", byteToString(hash1))
+	for i := 0; i < t.N; i++ {
+
+		hw.Sum(nil)
+		Sm3Sum(msg)
+	}
 }
