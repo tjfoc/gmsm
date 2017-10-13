@@ -11,6 +11,8 @@ go:
   
 install:
   - go get -v github.com/golang/lint/golint
+  - go get -v golang.org/x/crypto/ripemd160
+  - go get -v golang.org/x/crypto/sha3
   - go build -v ./sm2
   - go build -v ./sm3
   - go build -v ./sm4
@@ -26,14 +28,6 @@ script:
   - go test -v ./sm2
   - go test -v ./sm3
   - go test -v ./sm4
-  - cd sm2
-  - go test -bench=".*"
-  - cd ..
-  - cd sm3
-  - go test -bench=".*"
-  - cd ..
-  - cd sm4
-  - go test -bench=".*"
 
 after_failure:
 
@@ -48,5 +42,4 @@ notifications:
       - yewei@tj-fintech.com
       
     on_success: never # default: change
-    on_failure: always # default: always
-
+    on_failure: never # default: always

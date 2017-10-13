@@ -83,7 +83,8 @@ func TestSm2(t *testing.T) {
 			CommonName:   "test.example.com",
 			Organization: []string{"Test"},
 		},
-		SignatureAlgorithm: ECDSAWithSHA256,
+		//		SignatureAlgorithm: ECDSAWithSHA256,
+		SignatureAlgorithm: SM2WithSM3,
 	}
 	_, err = CreateCertificateRequestToPem("req.pem", &templateReq, privKey)
 	if err != nil {
@@ -128,8 +129,8 @@ func TestSm2(t *testing.T) {
 		NotBefore: time.Unix(1000, 0),
 		NotAfter:  time.Unix(100000, 0),
 
-		//SignatureAlgorithm: ECDSAWithSHA256,
-		SignatureAlgorithm: SM2WithSHA256,
+		//		SignatureAlgorithm: ECDSAWithSHA256,
+		SignatureAlgorithm: SM2WithSM3,
 
 		SubjectKeyId: []byte{1, 2, 3, 4},
 		KeyUsage:     KeyUsageCertSign,
@@ -180,25 +181,4 @@ func TestSm2(t *testing.T) {
 	} else {
 		fmt.Printf("CheckSignature ok\n")
 	}
-}
-
-func BenchmarkSM2(t *testing.B) {
-	t.ReportAllocs()
-	for i := 0; i < t.N; i++ {
-		benchSM2(t)
-	}
-}
-
-func benchSM2(t *testing.B) {
-	priv, err := GenerateKey() // 生成密钥对
-	if err != nil {
-		log.Fatal(err)
-	}
-	msg := []byte("test")
-	sign, err := priv.Sign(rand.Reader, msg, nil) // 签名
-	if err != nil {
-		log.Fatal(err)
-	}
-	_ = priv.Verify(msg, sign) // 密钥验证
-
 }
