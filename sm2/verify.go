@@ -208,7 +208,6 @@ func (c *Certificate) isValid(certType int, currentChain []*Certificate, opts *V
 			return CertificateInvalidError{c, NameMismatch}
 		}
 	}
-
 	now := opts.CurrentTime
 	if now.IsZero() {
 		now = time.Now()
@@ -216,7 +215,6 @@ func (c *Certificate) isValid(certType int, currentChain []*Certificate, opts *V
 	if now.Before(c.NotBefore) || now.After(c.NotAfter) {
 		return CertificateInvalidError{c, Expired}
 	}
-
 	if len(c.PermittedDNSDomains) > 0 {
 		ok := false
 		for _, constraint := range c.PermittedDNSDomains {

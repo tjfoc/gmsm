@@ -83,7 +83,8 @@ func TestSm2(t *testing.T) {
 			CommonName:   "test.example.com",
 			Organization: []string{"Test"},
 		},
-		SignatureAlgorithm: ECDSAWithSHA256,
+		//		SignatureAlgorithm: ECDSAWithSHA256,
+		SignatureAlgorithm: SM2WithSM3,
 	}
 	_, err = CreateCertificateRequestToPem("req.pem", &templateReq, privKey)
 	if err != nil {
@@ -128,7 +129,8 @@ func TestSm2(t *testing.T) {
 		NotBefore: time.Unix(1000, 0),
 		NotAfter:  time.Unix(100000, 0),
 
-		SignatureAlgorithm: ECDSAWithSHA256,
+		//		SignatureAlgorithm: ECDSAWithSHA256,
+		SignatureAlgorithm: SM2WithSM3,
 
 		SubjectKeyId: []byte{1, 2, 3, 4},
 		KeyUsage:     KeyUsageCertSign,
