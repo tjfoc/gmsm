@@ -128,7 +128,8 @@ func TestSm2(t *testing.T) {
 		NotBefore: time.Unix(1000, 0),
 		NotAfter:  time.Unix(100000, 0),
 
-		SignatureAlgorithm: ECDSAWithSHA256,
+		//SignatureAlgorithm: ECDSAWithSHA256,
+		SignatureAlgorithm: SM2WithSHA256,
 
 		SubjectKeyId: []byte{1, 2, 3, 4},
 		KeyUsage:     KeyUsageCertSign,
