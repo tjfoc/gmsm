@@ -206,6 +206,9 @@ const (
 	SHA256WithRSAPSS
 	SHA384WithRSAPSS
 	SHA512WithRSAPSS
+
+	SM2WithSHA256
+	SM2WithSHA1
 )
 
 func (algo SignatureAlgorithm) isRSAPSS() bool {
@@ -233,6 +236,9 @@ var algoName = [...]string{
 	ECDSAWithSHA256:  "ECDSA-SHA256",
 	ECDSAWithSHA384:  "ECDSA-SHA384",
 	ECDSAWithSHA512:  "ECDSA-SHA512",
+
+	SM2WithSHA1:   "SM2-SHA1",
+	SM2WithSHA256: "SM2-SHA256",
 }
 
 func (algo SignatureAlgorithm) String() string {
@@ -316,6 +322,9 @@ var (
 	oidSignatureECDSAWithSHA384 = asn1.ObjectIdentifier{1, 2, 840, 10045, 4, 3, 3}
 	oidSignatureECDSAWithSHA512 = asn1.ObjectIdentifier{1, 2, 840, 10045, 4, 3, 4}
 
+	oidSignatureSM2WithSHA1   = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 502}
+	oidSignatureSM2WithSHA256 = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 503}
+
 	oidSHA256 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
 	oidSHA384 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 2}
 	oidSHA512 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 3}
@@ -350,6 +359,9 @@ var signatureAlgorithmDetails = []struct {
 	{ECDSAWithSHA256, oidSignatureECDSAWithSHA256, ECDSA, crypto.SHA256},
 	{ECDSAWithSHA384, oidSignatureECDSAWithSHA384, ECDSA, crypto.SHA384},
 	{ECDSAWithSHA512, oidSignatureECDSAWithSHA512, ECDSA, crypto.SHA512},
+
+	{SM2WithSHA1, oidSignatureSM2WithSHA1, ECDSA, crypto.SHA1},
+	{SM2WithSHA256, oidSignatureSM2WithSHA256, ECDSA, crypto.SHA256},
 }
 
 // pssParameters reflects the parameters in an AlgorithmIdentifier that
@@ -841,9 +853,9 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 	var hashType crypto.Hash
 
 	switch algo {
-	case SHA1WithRSA, DSAWithSHA1, ECDSAWithSHA1:
+	case SHA1WithRSA, DSAWithSHA1, ECDSAWithSHA1, SM2WithSHA1:
 		hashType = crypto.SHA1
-	case SHA256WithRSA, SHA256WithRSAPSS, DSAWithSHA256, ECDSAWithSHA256:
+	case SHA256WithRSA, SHA256WithRSAPSS, DSAWithSHA256, ECDSAWithSHA256, SM2WithSHA256:
 		hashType = crypto.SHA256
 	case SHA384WithRSA, SHA384WithRSAPSS, ECDSAWithSHA384:
 		hashType = crypto.SHA384
@@ -1710,7 +1722,7 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 		switch pub.Curve {
 		case P256Sm2():
 			hashFunc = crypto.SHA256
-			sigAlgo.Algorithm = oidSignatureECDSAWithSHA256
+			sigAlgo.Algorithm = oidSignatureSM2WithSHA256
 		default:
 			err = errors.New("x509: unknown SM2 curve")
 		}
