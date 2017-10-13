@@ -11,6 +11,7 @@ go:
   
 install:
   - go get -v github.com/golang/lint/golint
+  - go get -v golang.org/x/crypto
   - go build -v ./sm2
   - go build -v ./sm3
   - go build -v ./sm4
