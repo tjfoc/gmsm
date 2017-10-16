@@ -177,8 +177,7 @@ func MarshalSm2PublicKey(key *PublicKey) ([]byte, error) {
 	algo.Parameters.Class = 0
 	algo.Parameters.Tag = 6
 	algo.Parameters.IsCompound = false
-	algo.Parameters.Bytes = []byte{42, 129, 28, 207, 85, 1, 130, 45}
-	algo.Parameters.FullBytes = []byte{6, 8, 42, 129, 28, 207, 85, 1, 130, 45}
+	algo.Parameters.FullBytes = []byte{6, 8, 42, 129, 28, 207, 85, 1, 130, 45} // asn1.Marshal(asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301})
 	r.Algo = algo
 	r.BitString = asn1.BitString{Bytes: elliptic.Marshal(key.Curve, key.X, key.Y)}
 	return asn1.Marshal(r)
@@ -293,8 +292,7 @@ func MarshalSm2UnecryptedPrivateKey(key *PrivateKey) ([]byte, error) {
 	algo.Parameters.Class = 0
 	algo.Parameters.Tag = 6
 	algo.Parameters.IsCompound = false
-	algo.Parameters.Bytes = []byte{42, 129, 28, 207, 85, 1, 130, 45}
-	algo.Parameters.FullBytes = []byte{6, 8, 42, 129, 28, 207, 85, 1, 130, 45}
+	algo.Parameters.FullBytes = []byte{6, 8, 42, 129, 28, 207, 85, 1, 130, 45} // asn1.Marshal(asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301})
 	priv.Version = 1
 	priv.NamedCurveOID = oidNamedCurveP256SM2
 	priv.PublicKey = asn1.BitString{Bytes: elliptic.Marshal(key.Curve, key.X, key.Y)}
