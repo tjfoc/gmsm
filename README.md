@@ -40,3 +40,23 @@ GMSM包含以下主要功能
 
 
 关于GMSM交流： [![Join the chat at https://gitter.im/tjfoc/gmsm](https://badges.gitter.im/tjfoc/gmsm.svg)](https://gitter.im/tjfoc/gmsm?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+### sm4 加速
+| | 测试环境 |
+| --- | :--- |
+| CPU | Intel(TM) i5-4570 @ 3.20GHz |
+| OS | Ubuntu 16.04.3 LTS |
+| Go ver. | 1.7.3 linux/amd64 |
+
+* [原版 by tjfoc](https://github.com/tjfoc/gmsm):
+```
+BenchmarkSM4-4   	 2000000	       651 ns/op	      32 B/op	       2 allocs/op
+PASS
+ok  	github.com/tjfoc/gmsm/sm4	1.992s
+```
+* [加速版 by QwertyJack](https://github.com/QwertyJack/gmsm.git):
+```
+BenchmarkSM4-4   	 3000000	       404 ns/op	      32 B/op	       2 allocs/op
+PASS
+ok  	github.com/QwertyJack/gmsm/sm4	1.638s
+```
