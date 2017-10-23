@@ -186,9 +186,20 @@ func TestSm2(t *testing.T) {
 func BenchmarkSM2(t *testing.B) {
 	t.ReportAllocs()
 	for i := 0; i < t.N; i++ {
-		_, err := GenerateKey() // 生成密钥对
+		priv, err := GenerateKey() // 生成密钥对
 		if err != nil {
 			log.Fatal(err)
+		}
+		msg := []byte("test")
+		sign, err := priv.Sign(rand.Reader, msg, nil) // 签名
+		if err != nil {
+			log.Fatal(err)
+		}
+		ok := priv.Verify(msg, sign) // 密钥验证
+		if ok != true {
+			fmt.Printf("Verify error\n")
+		} else {
+			fmt.Printf("Verify ok\n")
 		}
 	}
 }
