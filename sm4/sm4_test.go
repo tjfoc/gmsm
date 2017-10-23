@@ -100,3 +100,25 @@ func testCompare(key1, key2 []byte) bool {
 	}
 	return true
 }
+
+func BenchmarkSM4(t *testing.B) {
+	t.ReportAllocs()
+	key := []byte("1234567890abcdef")
+	data := []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10}
+	WriteKeyToPem("key.pem", key, nil)
+	key, err := ReadKeyFromPem("key.pem", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	c, err := NewCipher(key)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for i := 0; i < t.N; i++ {
+		d0 := make([]byte, 16)
+		c.Encrypt(d0, data)
+		d1 := make([]byte, 16)
+		c.Decrypt(d1, d0)
+	}
+}
