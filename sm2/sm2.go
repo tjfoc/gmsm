@@ -152,7 +152,8 @@ func Sign(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 				r = nil
 				return
 			}
-			r, _ = priv.Curve.ScalarBaseMult(k.Bytes())
+			//r, _ = priv.Curve.ScalarBaseMult(k.Bytes())
+			r, _ = ScalarBaseMult(priv.Curve, k)
 			r.Add(r, e)
 			r.Mod(r, N)
 			if r.Sign() != 0 {
