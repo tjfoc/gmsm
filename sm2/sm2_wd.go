@@ -46,7 +46,6 @@ var preComputedBigInt = [2 * 15 * 2]string{
 
 func BigInt2Uint32Bytes(k *big.Int) [8]uint32 {
 	kb := k.Bytes()
-	//fmt.Println("k bytes len= ", len(kb))
 	var scalar [8]uint32
 	for i := 0; i < len(scalar); i++ {
 		scalar[i] = uint32(0)
@@ -67,7 +66,6 @@ func BigInt2Uint32Bytes(k *big.Int) [8]uint32 {
 	}
 	//residue < 4 bytes
 	r := len(kb) - i
-	//fmt.Println("lenOfKbytes=", len(kb), "i=", i, "r=", r, "scalarI=", scalarI)
 	if r != 0 {
 		var z uint32
 		for j := 0; j < r; j++ {
@@ -86,10 +84,8 @@ func ScalarBaseMult(curve elliptic.Curve, k *big.Int) (r, s *big.Int) {
 	//Gx, Gy := curve.Params().Gx, curve.Params().Gy
 	bz := new(big.Int).SetInt64(1)
 
-	//fmt.Printf("scalar: %v\n", scalar)
 	x, y, z := new(big.Int), new(big.Int), new(big.Int)
 	for i := uint(0); i < 32; i++ {
-		//x, y = curve.Double(x, y)
 		x, y, z = doubleJacobian(curve.Params(), x, y, z)
 
 		a0 := (scalar[0] >> (31 - i)) & 1
@@ -108,21 +104,16 @@ func ScalarBaseMult(curve elliptic.Curve, k *big.Int) (r, s *big.Int) {
 		if index0 != 0 {
 			x1, _ := new(big.Int).SetString(preComputedBigInt[(index0-1)*2], 10)
 			y1, _ := new(big.Int).SetString(preComputedBigInt[(index0-1)*2+1], 10)
-			//x, y = curve.Add(x, y, x1, y1)
 			x, y, z = addJacobian(curve.Params(), x1, y1, bz, x, y, z)
 		}
 
 		if index1 != 0 {
 			x2, _ := new(big.Int).SetString(preComputedBigInt[15*2+(index1-1)*2], 10)
 			y2, _ := new(big.Int).SetString(preComputedBigInt[15*2+(index1-1)*2+1], 10)
-			//x, y = curve.Add(x, y, x2, y2)
 			x, y, z = addJacobian(curve.Params(), x2, y2, bz, x, y, z)
 		}
-
-		//fmt.Printf("index0=%d, index1=%d\n", index0, index1)
 	}
 
-	//return x, y
 	return affineFromJacobian(curve.Params(), x, y, z)
 }
 
@@ -189,7 +180,6 @@ func doubleJacobian(curve *elliptic.CurveParams, x, y, z *big.Int) (*big.Int, *b
 // addJacobian takes two points in Jacobian coordinates, (x1, y1, z1) and
 // (x2, y2, z2) and returns their sum, also in Jacobian form.
 func addJacobian(curve *elliptic.CurveParams, x1, y1, z1, x2, y2, z2 *big.Int) (*big.Int, *big.Int, *big.Int) {
-	// See http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-add-2007-bl
 	x3, y3, z3 := new(big.Int), new(big.Int), new(big.Int)
 	if z1.Sign() == 0 {
 		x3.Set(x2)
