@@ -82,20 +82,15 @@ func BigInt2Uint32Bytes(k *big.Int) [8]uint32 {
 		scalar[scalarI] = z
 		scalarI++
 	}
-	//residue < 4 bytes
-	//fmt.Println("lenOfKbytes=", len(kb), "i=", i, "r=", r, "scalarI=", scalarI)
 
 	return scalar
 }
 func ScalarBaseMult(curve elliptic.Curve, k *big.Int) (r, s *big.Int) {
 	var scalar = BigInt2Uint32Bytes(k)
-	//Gx, Gy := curve.Params().Gx, curve.Params().Gy
 	bz := new(big.Int).SetInt64(1)
 
-	//fmt.Printf("scalar: %v\n", scalar)
 	x, y, z := new(big.Int), new(big.Int), new(big.Int)
 	for i := uint(0); i < 32; i++ {
-		//x, y = curve.Double(x, y)
 		x, y, z = doubleJacobian(curve.Params(), x, y, z)
 
 		a0 := (scalar[0] >> (31 - i)) & 1
@@ -115,21 +110,18 @@ func ScalarBaseMult(curve elliptic.Curve, k *big.Int) (r, s *big.Int) {
 		if index0 != 0 {
 			x1, _ := new(big.Int).SetString(preComputedBigInt[(index0-1)*2], 10)
 			y1, _ := new(big.Int).SetString(preComputedBigInt[(index0-1)*2+1], 10)
-			//x, y = curve.Add(x, y, x1, y1)
 			x, y, z = addJacobian(curve.Params(), x1, y1, bz, x, y, z)
 		}
 
 		if index1 != 0 {
 			x2, _ := new(big.Int).SetString(preComputedBigInt[15*2+(index1-1)*2], 10)
 			y2, _ := new(big.Int).SetString(preComputedBigInt[15*2+(index1-1)*2+1], 10)
-			//x, y = curve.Add(x, y, x2, y2)
 			x, y, z = addJacobian(curve.Params(), x2, y2, bz, x, y, z)
 		}
 
 		fmt.Printf("index0=%d, index1=%d\n", index0, index1)
 	}
 
-	//return x, y
 	return affineFromJacobian(curve.Params(), x, y, z)
 }
 
