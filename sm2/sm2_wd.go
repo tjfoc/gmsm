@@ -8,6 +8,7 @@ package sm2
 
 import (
 	"crypto/elliptic"
+	"fmt"
 	"math/big"
 )
 
@@ -46,15 +47,31 @@ var preComputedBigInt = [2 * 15 * 2]string{
 
 func BigInt2Uint32Bytes(k *big.Int) [8]uint32 {
 	kb := k.Bytes()
-	//fmt.Println("k bytes len= ", len(kb))
+
 	var scalar [8]uint32
 	for i := 0; i < len(scalar); i++ {
 		scalar[i] = uint32(0)
 	}
+
 	//big-endien, []byte -> [8]uint32
-	var i = 0
-	var scalarI = 0
-	for ; i < len(kb)-3; i += 4 {
+	r := 32 - len(kb)
+	scalarI := r / 4
+	brower := 4 - r%4
+
+	//leading zeros, < 4 bytes
+	if brower != 0 {
+		var zz uint32
+		for q := 0; q < brower; q++ {
+			if q != 0 {
+				zz <<= 8
+			}
+			zz += uint32(kb[q])
+		}
+		scalar[scalarI] = zz
+		scalarI++
+	}
+
+	for i := brower; i < len(kb); i += 4 {
 		var z uint32
 		for j := 0; j < 4; j++ {
 			if j != 0 {
@@ -66,18 +83,7 @@ func BigInt2Uint32Bytes(k *big.Int) [8]uint32 {
 		scalarI++
 	}
 	//residue < 4 bytes
-	r := len(kb) - i
 	//fmt.Println("lenOfKbytes=", len(kb), "i=", i, "r=", r, "scalarI=", scalarI)
-	if r != 0 {
-		var z uint32
-		for j := 0; j < r; j++ {
-			if j != 0 {
-				z <<= 8
-			}
-			z += uint32(kb[i+j])
-		}
-		scalar[scalarI] = z
-	}
 
 	return scalar
 }
@@ -93,12 +99,13 @@ func ScalarBaseMult(curve elliptic.Curve, k *big.Int) (r, s *big.Int) {
 		x, y, z = doubleJacobian(curve.Params(), x, y, z)
 
 		a0 := (scalar[0] >> (31 - i)) & 1
-		a1 := (scalar[1] >> (31 - i)) & 1
 		a2 := (scalar[2] >> (31 - i)) & 1
-		a3 := (scalar[3] >> (31 - i)) & 1
 		a4 := (scalar[4] >> (31 - i)) & 1
-		a5 := (scalar[5] >> (31 - i)) & 1
 		a6 := (scalar[6] >> (31 - i)) & 1
+
+		a1 := (scalar[1] >> (31 - i)) & 1
+		a3 := (scalar[3] >> (31 - i)) & 1
+		a5 := (scalar[5] >> (31 - i)) & 1
 		a7 := (scalar[7] >> (31 - i)) & 1
 
 		index0 := (a1 << 3) + (a3 << 2) + (a5 << 1) + a7
@@ -119,7 +126,7 @@ func ScalarBaseMult(curve elliptic.Curve, k *big.Int) (r, s *big.Int) {
 			x, y, z = addJacobian(curve.Params(), x2, y2, bz, x, y, z)
 		}
 
-		//fmt.Printf("index0=%d, index1=%d\n", index0, index1)
+		fmt.Printf("index0=%d, index1=%d\n", index0, index1)
 	}
 
 	//return x, y
