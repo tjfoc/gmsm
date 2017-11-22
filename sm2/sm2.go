@@ -99,7 +99,7 @@ func GenerateKey() (*PrivateKey, error) {
 	priv := new(PrivateKey)
 	priv.PublicKey.Curve = c
 	priv.D = k
-	priv.PublicKey.X, priv.PublicKey.Y = c.ScalarBaseMult(k.Bytes())
+	priv.PublicKey.X, priv.PublicKey.Y = ScalarBaseMult(c, k)
 	return priv, nil
 }
 
@@ -152,7 +152,8 @@ func Sign(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 				r = nil
 				return
 			}
-			r, _ = priv.Curve.ScalarBaseMult(k.Bytes())
+			//r, _ = priv.Curve.ScalarBaseMult(k.Bytes())
+			r, _ = ScalarBaseMult(priv.Curve, k)
 			r.Add(r, e)
 			r.Mod(r, N)
 			if r.Sign() != 0 {
@@ -197,7 +198,7 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	if opt, ok := c.(combinedMult); ok {
 		x, _ = opt.CombinedMult(pub.X, pub.Y, s.Bytes(), t.Bytes())
 	} else {
-		x1, y1 := c.ScalarBaseMult(s.Bytes())
+		x1, y1 := ScalarBaseMult(pub.Curve, s)
 		x2, y2 := c.ScalarMult(pub.X, pub.Y, t.Bytes())
 		x, _ = c.Add(x1, y1, x2, y2)
 	}
