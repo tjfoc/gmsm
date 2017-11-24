@@ -1,8 +1,5 @@
 ## 更新日志
 
-1.0.1 更新:
-- 添加全局的sbox改进sm4效率(by https://github.com/QwertyJack)
-
 1.0 更新:
 - 添加以下oid<br>
     SM3WithSM2 1.2.156.10197.1.501<br>
@@ -18,6 +15,9 @@
     SHA3_512<br>
     SHA3_SM3<br>
   用户需要自己安装golang.org/x/crypto
+
+1.0.1 更新:
+- 添加全局的sbox改进sm4效率(by https://github.com/QwertyJack)
 
 1.1.0更新:
 - 改进新能，具体提升如下
