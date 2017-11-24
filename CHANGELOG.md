@@ -19,26 +19,29 @@
     SHA3_SM3<br>
   用户需要自己安装golang.org/x/crypto
 
-- 改进新能，具体提升如下(注:本次优化并不彻底，只是第一次尝试优化，后续有时间还会继续优化)
-    old:<br>
-        generate key:<br>
-            BenchmarkSM2-4          1000   2517147 ns/op 1156476 B/op   11273 allocs/op<br>
-        sign:<br>
-            BenchmarkSM2-4           300   6297498 ns/op 2321890 B/op   22653 allocs/op<br>
-        verify:<br>
-            BenchmarkSM2-4          2000   8557215 ns/op 3550626 B/op   34627 allocs/op<br>
-        encrypt:<br>
-            BenchmarkSM2-4          2000   8304840 ns/op 3483113 B/op   33967 allocs/op<br>
-        decrypt:<br>
-            BenchmarkSM2-4          2000   5726181 ns/op 2321728 B/op   22644 allocs/op<br>
-    new:<br>
-        generate key:<br>
-            BenchmarkSM2-4          5000    303656 ns/op    2791 B/op      41 allocs/op<br>
-        sign:<br>
-            BenchmarkSM2-4          2000    652465 ns/op    8828 B/op     133 allocs/op<br>
-        verify:<br>
-            BenchmarkSM2-4          1000   2004511 ns/op  122709 B/op    1738 allocs/op<br>
-        encrpyt:<br>
-            BenchmarkSM2-4          1000   1984419 ns/op  118560 B/op    1687 allocs/op<br>
-        decrypt:<br>
-            BenchmarkSM2-4          1000   1725001 ns/op  118331 B/op    1679 allocs/op<br>
+- 改进新能，具体提升如下
+&emsp;注:本次优化并不彻底，只是第一次尝试优化，后续有时间还会继续优化
+```
+    old:
+        generate key:
+            BenchmarkSM2-4          1000   2517147 ns/op 1156476 B/op   11273 allocs/op
+        sign:
+            BenchmarkSM2-4           300   6297498 ns/op 2321890 B/op   22653 allocs/op
+        verify:
+            BenchmarkSM2-4          2000   8557215 ns/op 3550626 B/op   34627 allocs/op
+        encrypt:
+            BenchmarkSM2-4          2000   8304840 ns/op 3483113 B/op   33967 allocs/op
+        decrypt:
+            BenchmarkSM2-4          2000   5726181 ns/op 2321728 B/op   22644 allocs/op
+    new:
+        generate key:
+            BenchmarkSM2-4          5000    303656 ns/op    2791 B/op      41 allocs/op
+        sign:
+            BenchmarkSM2-4          2000    652465 ns/op    8828 B/op     133 allocs/op
+        verify:
+            BenchmarkSM2-4          1000   2004511 ns/op  122709 B/op    1738 allocs/op
+        encrpyt:
+            BenchmarkSM2-4          1000   1984419 ns/op  118560 B/op    1687 allocs/op
+        decrypt:
+            BenchmarkSM2-4          1000   1725001 ns/op  118331 B/op    1679 allocs/op
+```
