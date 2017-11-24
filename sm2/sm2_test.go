@@ -16,7 +16,6 @@ limitations under the License.
 package sm2
 
 import (
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -30,29 +29,12 @@ import (
 	"time"
 )
 
-// checkout  y 2 = x 3 + ax + b
-// 有人质疑生成的曲线是否符合sm2标准，故作此证明
-func isonCurve(curve *elliptic.CurveParams, x, y *big.Int) bool {
-	y2 := new(big.Int).Mul(y, y)
-	y2.Mod(y2, curve.P)
-
-	x3 := new(big.Int).Mul(x, x)
-	x3.Mul(x3, x)
-
-	a, _ := new(big.Int).SetString("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC", 16)
-	ax := new(big.Int).Mul(x, a)
-	x3.Add(x3, ax)
-	x3.Add(x3, curve.B)
-	x3.Mod(x3, curve.P)
-	return x3.Cmp(y2) == 0
-}
-
 func TestSm2(t *testing.T) {
 	priv, err := GenerateKey() // 生成密钥对
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%v\n", isonCurve(priv.Params(), priv.X, priv.Y)) // 验证是否为sm2的曲线
+	fmt.Printf("%v\n", priv.Curve.IsOnCurve(priv.X, priv.Y)) // 验证是否为sm2的曲线
 	pub := &priv.PublicKey
 	msg := []byte("123456")
 	d0, err := pub.Encrypt(msg)

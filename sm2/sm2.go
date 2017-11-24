@@ -33,10 +33,6 @@ import (
 	"github.com/tjfoc/gmsm/sm3"
 )
 
-type combinedMult interface {
-	CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x, y *big.Int)
-}
-
 const (
 	aesIV = "IV for <SM2> CTR"
 )
@@ -240,18 +236,26 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	}
 
 	var x *big.Int
-	if opt, ok := c.(combinedMult); ok {
-		x, _ = opt.CombinedMult(pub.X, pub.Y, s.Bytes(), t.Bytes())
-	} else {
-		x1, y1 := c.ScalarBaseMult(s.Bytes())
-		x2, y2 := c.ScalarMult(pub.X, pub.Y, t.Bytes())
-		x, _ = c.Add(x1, y1, x2, y2)
-	}
+	x1, y1 := c.ScalarBaseMult(s.Bytes())
+	x2, y2 := c.ScalarMult(pub.X, pub.Y, t.Bytes())
+	x, _ = c.Add(x1, y1, x2, y2)
 
 	e := new(big.Int).SetBytes(hash)
 	x.Add(x, e)
 	x.Mod(x, N)
 	return x.Cmp(r) == 0
+}
+
+// 32byte
+var zeroByteSlice = []byte{
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
 }
 
 /*
@@ -262,6 +266,10 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
  *  CipherText
  */
 func Encrypt(pub *PublicKey, data []byte) ([]byte, error) {
+	lenx1 := 0
+	leny1 := 0
+	lenx2 := 0
+	leny2 := 0
 	length := len(data)
 	for {
 		c := []byte{}
@@ -272,11 +280,27 @@ func Encrypt(pub *PublicKey, data []byte) ([]byte, error) {
 		}
 		x1, y1 := curve.ScalarBaseMult(k.Bytes())
 		x2, y2 := curve.ScalarMult(pub.X, pub.Y, k.Bytes())
+		lenx1 = len(x1.Bytes())
+		leny1 = len(y1.Bytes())
+		lenx2 = len(x2.Bytes())
+		leny2 = len(y2.Bytes())
+		if lenx1 < 32 {
+			c = append(c, zeroByteSlice[:(32-lenx1)]...)
+		}
 		c = append(c, x1.Bytes()...) // x分量
+		if leny1 < 32 {
+			c = append(c, zeroByteSlice[:(32-leny1)]...)
+		}
 		c = append(c, y1.Bytes()...) // y分量
 		tm := []byte{}
+		if lenx2 < 32 {
+			tm = append(tm, zeroByteSlice[:(32-lenx2)]...)
+		}
 		tm = append(tm, x2.Bytes()...)
 		tm = append(tm, data...)
+		if leny2 < 32 {
+			tm = append(tm, zeroByteSlice[:(32-leny2)]...)
+		}
 		tm = append(tm, y2.Bytes()...)
 		h := sm3.Sm3Sum(tm)
 		c = append(c, h...)
