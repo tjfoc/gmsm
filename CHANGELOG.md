@@ -20,7 +20,8 @@
 - 添加全局的sbox改进sm4效率(by https://github.com/QwertyJack)
 
 1.1.0更新:
-- 改进新能，具体提升如下
+- 添加vendor，方便工程使用
+- 改进性能，具体提升如下
 &emsp;注:本次优化并不彻底，只是第一次尝试优化，后续有时间还会继续优化
 ```
     old:
@@ -46,3 +47,4 @@
         decrypt:
             BenchmarkSM2-4          1000   1725001 ns/op  118331 B/op    1679 allocs/op
 ```
+
