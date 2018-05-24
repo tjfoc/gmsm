@@ -1028,12 +1028,16 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		}
 		switch pub.Curve {
 		case P256Sm2():
-			if !Verify(&PublicKey{
+
+
+			sm2PubKey := PublicKey{
 				Curve: pub.Curve,
 				X:     pub.X,
 				Y:     pub.Y,
-			}, digest, ecdsaSig.R, ecdsaSig.S) {
-				return errors.New("x509: SM2 verification failure")
+			}
+			digest = Sm3ForVerify(&sm2PubKey, signed)
+			if !Verify(&sm2PubKey, digest, ecdsaSig.R, ecdsaSig.S) {
+				return errors.New("\nx509: SM2 cert verification failure\n")
 			}
 		default:
 			if !ecdsa.Verify(pub, digest, ecdsaSig.R, ecdsaSig.S) {
@@ -1956,9 +1960,6 @@ func CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv 
 
 	c.Raw = tbsCertContents
 
-	h := hashFunc.New()
-	h.Write(tbsCertContents)
-	digest := h.Sum(nil)
 
 	var signerOpts crypto.SignerOpts
 	signerOpts = hashFunc
@@ -1970,7 +1971,23 @@ func CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv 
 	}
 
 	var signature []byte
-	signature, err = key.Sign(rand, digest, signerOpts)
+
+	switch key.(type) {
+	case *PrivateKey:
+
+		smPrvKey, _ := key.(*PrivateKey)
+
+		signature, err = smPrvKey.Sign(nil, tbsCertContents, nil)
+
+	default:
+	
+		h := hashFunc.New()
+		h.Write(tbsCertContents)
+		digest := h.Sum(nil)
+		signature, err = key.Sign(rand, digest, signerOpts)
+
+	}
+
 	if err != nil {
 		return
 	}
@@ -2339,12 +2356,24 @@ func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, priv
 	}
 	tbsCSR.Raw = tbsCSRContents
 
-	h := hashFunc.New()
-	h.Write(tbsCSRContents)
-	digest := h.Sum(nil)
-
 	var signature []byte
-	signature, err = key.Sign(rand, digest, hashFunc)
+
+	switch key.(type) {
+	case *PrivateKey:
+
+		smPrvKey, _ := key.(*PrivateKey)
+
+		signature, err = smPrvKey.Sign(nil, tbsCSRContents, nil)
+
+	default:
+		
+		h := hashFunc.New()
+		h.Write(tbsCSRContents)
+		digest := h.Sum(nil)
+		signature, err = key.Sign(rand, digest, hashFunc)
+
+	}
+
 	if err != nil {
 		return
 	}
