@@ -1,3 +1,23 @@
+# Note
+ This is fork of https://github.com/tjfoc/gmsm
+
+
+# Changed
+
+* Compatiable for standards SM2WithSM3 
+    * Add userID
+    * Add Z 
+    * Changed Sign and Verify for SM2
+* Verified the USBKey GM signature
+
+# TODO
+
+* Remove debug code
+* Remove redundant/dumplicated code 
+* userID as parameters
+* Prepare Pull Request
+
+# Orignal Readme
 
 GM SM2/3/4 library based on Golang
 

@@ -26,11 +26,13 @@ import (
 	"crypto/sha512"
 	"encoding/asn1"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
-	"github.com/tjfoc/gmsm/sm3"
+	"github.com/hoarfw/gmsm/sm3"
 )
 
 const (
@@ -51,6 +53,12 @@ type sm2Signature struct {
 	R, S *big.Int
 }
 
+var isDebug bool = false
+
+func SetDebug(isD bool) {
+	isDebug = isD
+}
+
 // The SM2's private key contains the public key
 func (priv *PrivateKey) Public() crypto.PublicKey {
 	return &priv.PublicKey
@@ -58,7 +66,7 @@ func (priv *PrivateKey) Public() crypto.PublicKey {
 
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
-	r, s, err := Sign(priv, msg)
+	r, s, err := SignSm2(priv, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -69,14 +77,78 @@ func (priv *PrivateKey) Decrypt(data []byte) ([]byte, error) {
 	return Decrypt(priv, data)
 }
 
-func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
+func debugf(format string, a ...interface{}) (n int, err error) {
+	if isDebug {
+		return fmt.Printf(format, a)
+	} else {
+		return 0, nil
+	}
+}
+
+func Sm3ForVerify(pub *PublicKey, plain []byte) []byte {
+	digest := sm3.New()
+	userID := []byte("1234567812345678")
+	z := pub.GetZ(userID)
+	debugf("Z:%s\n", hex.Dump(z))
+	digest.Reset()
+	digest.Write(z)
+	digest.Write(plain)
+	hash := digest.Sum(nil)
+	return hash
+}
+
+func (pub *PublicKey) Verify(plain []byte, sign []byte) bool {
+	digest := sm3.New()
+	userID := []byte("1234567812345678")
+	z := pub.GetZ(userID)
+	debugf("Z:%s\n", hex.Dump(z))
+	digest.Reset()
+	digest.Write(z)
+	digest.Write(plain)
+	hash := digest.Sum(nil)
+	debugf("Dig:%s\n", hex.Dump(hash))
+	return pub.VerifyHash(hash, sign)
+}
+
+func (pub *PublicKey) GetZ(userID []byte) []byte {
+	digest := sm3.New()
+	digest.Reset()
+	lens := len(userID) * 8
+	b := []byte{(byte)(lens >> 8 & 0xFF), (byte)(lens & 0xFF)}
+
+	digest.Write(b)
+	digest.Write(userID)
+
+	ecParams := pub.Curve.Params()
+	//TODO Get it from params
+	A, _ := new(big.Int).SetString("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC", 16)
+	digest.Write(A.Bytes())
+
+	debugf("A:%s\n", A)
+	debugf("B:%s\n", hex.Dump(A.Bytes()))
+	digest.Write(ecParams.B.Bytes())
+	debugf("B:%s\n", hex.Dump(ecParams.B.Bytes()))
+	digest.Write(ecParams.Gx.Bytes())
+	debugf("Gx:%s\n", hex.Dump(ecParams.Gx.Bytes()))
+	digest.Write(ecParams.Gy.Bytes())
+	debugf("Gy:%s\n", hex.Dump(ecParams.Gy.Bytes()))
+	digest.Write(pub.X.Bytes())
+	debugf("X:%s\n", hex.Dump(pub.X.Bytes()))
+	digest.Write(pub.Y.Bytes())
+	debugf("Y:%s\n", hex.Dump(pub.Y.Bytes()))
+	result := digest.Sum(nil)
+	return result
+}
+
+func (pub *PublicKey) VerifyHash(hash []byte, sign []byte) bool {
+
 	var sm2Sign sm2Signature
 
 	_, err := asn1.Unmarshal(sign, &sm2Sign)
 	if err != nil {
 		return false
 	}
-	return Verify(pub, msg, sm2Sign.R, sm2Sign.S)
+	return Verify(pub, hash, sm2Sign.R, sm2Sign.S)
 }
 
 func (pub *PublicKey) Encrypt(data []byte) ([]byte, error) {
@@ -132,6 +204,16 @@ func randFieldElement(c elliptic.Curve, rand io.Reader) (k *big.Int, err error) 
 	return
 }
 
+func randFieldElementBytes(c elliptic.Curve, rand []byte) (k *big.Int, err error) {
+	params := c.Params()
+	b := rand
+	k = new(big.Int).SetBytes(b)
+	n := new(big.Int).Sub(params.N, one)
+	k.Mod(k, n)
+	k.Add(k, one)
+	return
+}
+
 func GenerateKey() (*PrivateKey, error) {
 	c := P256Sm2()
 	k, err := randFieldElement(c, rand.Reader)
@@ -147,7 +229,71 @@ func GenerateKey() (*PrivateKey, error) {
 
 var errZeroParam = errors.New("zero parameter")
 
-func Sign(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
+func SignSm2(priv *PrivateKey, msg []byte) (r, s *big.Int, err error) {
+	entropylen := (priv.Curve.Params().BitSize + 7) / 16
+	if entropylen > 32 {
+		entropylen = 32
+	}
+	entropy := make([]byte, entropylen)
+	_, err = io.ReadFull(rand.Reader, entropy)
+	if err != nil {
+		return
+	}
+	pubKey := priv.PublicKey
+	userID := []byte("1234567812345678")
+	z := pubKey.GetZ(userID)
+
+	// Initialize an SHA-512 hash context; digest ...
+	md := sm3.New()
+	md.Write(z) // the private key,
+	//	md.Write(entropy)        // the entropy,
+	md.Write(msg)          // and the input hash;
+	sm3Hash := md.Sum(nil) // and compute ChopMD-256(SHA-512),
+	// which is an indifferentiable MAC.
+
+	// See [NSA] 3.4.1
+	c := priv.PublicKey.Curve
+
+	N := c.Params().N //GetN
+	if N.Sign() == 0 {
+		return nil, nil, errZeroParam
+	}
+	var k *big.Int
+	e := new(big.Int).SetBytes(sm3Hash) //GetE
+
+	for { // 
+		for {
+			k, err = randFieldElementBytes(c, entropy)
+			if err != nil {
+				r = nil
+				return
+			}
+			r, _ = priv.Curve.ScalarBaseMult(k.Bytes())
+			r.Add(r, e)
+			r.Mod(r, N)
+			if r.Sign() != 0 {
+				break
+			}
+			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
+				break
+			}
+		}
+
+		rD := new(big.Int).Mul(priv.D, r)
+
+		s = new(big.Int).Sub(k, rD)
+		d1 := new(big.Int).Add(priv.D, one)
+		d1Inv := new(big.Int).ModInverse(d1, N)
+		s.Mul(s, d1Inv)
+		s.Mod(s, N)
+		if s.Sign() != 0 {
+			break
+		}
+	}
+	return
+}
+
+func SignSHA512(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 	entropylen := (priv.Curve.Params().BitSize + 7) / 16
 	if entropylen > 32 {
 		entropylen = 32
