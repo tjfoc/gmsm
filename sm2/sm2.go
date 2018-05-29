@@ -56,6 +56,10 @@ func (priv *PrivateKey) Public() crypto.PublicKey {
 	return &priv.PublicKey
 }
 
+func SignDigitToSignData(r, s *big.Int) ([]byte, error) {
+	return asn1.Marshal(sm2Signature{r, s})
+}
+
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
 	r, s, err := Sign(priv, msg)
@@ -231,7 +235,7 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	// 调整算法细节以实现SM2
 	t := new(big.Int).Add(r, s)
 	t.Mod(t, N)
-	if N.Sign() == 0 {
+	if t.Sign() == 0 {
 		return false
 	}
 
@@ -244,6 +248,117 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	x.Add(x, e)
 	x.Mod(x, N)
 	return x.Cmp(r) == 0
+}
+
+func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
+	za, err := ZA(&priv.PublicKey, uid)
+	if err != nil {
+		return nil, nil, err
+	}
+	e, err := msgHash(za, msg)
+	if err != nil {
+		return nil, nil, err
+	}
+	c := priv.PublicKey.Curve
+	N := c.Params().N
+	if N.Sign() == 0 {
+		return nil, nil, errZeroParam
+	}
+	var k *big.Int
+	for { // 调整算法细节以实现SM2
+		for {
+			k, err = randFieldElement(c, rand.Reader)
+			if err != nil {
+				r = nil
+				return
+			}
+			r, _ = priv.Curve.ScalarBaseMult(k.Bytes())
+			r.Add(r, e)
+			r.Mod(r, N)
+			if r.Sign() != 0 {
+				break
+			}
+			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
+				break
+			}
+		}
+		rD := new(big.Int).Mul(priv.D, r)
+		s = new(big.Int).Sub(k, rD)
+		d1 := new(big.Int).Add(priv.D, one)
+		d1Inv := new(big.Int).ModInverse(d1, N)
+		s.Mul(s, d1Inv)
+		s.Mod(s, N)
+		if s.Sign() != 0 {
+			break
+		}
+	}
+	return
+}
+
+func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
+	c := pub.Curve
+	N := c.Params().N
+	one := new(big.Int).SetInt64(1)
+	if r.Cmp(one) < 0 || s.Cmp(one) < 0 {
+		return false
+	}
+	if r.Cmp(N) >= 0 || s.Cmp(N) >= 0 {
+		return false
+	}
+	za, err := ZA(pub, uid)
+	if err != nil {
+		return false
+	}
+	e, err := msgHash(za, msg)
+	if err != nil {
+		return false
+	}
+	t := new(big.Int).Add(r, s)
+	t.Mod(t, N)
+	if t.Sign() == 0 {
+		return false
+	}
+	var x *big.Int
+	x1, y1 := c.ScalarBaseMult(s.Bytes())
+	x2, y2 := c.ScalarMult(pub.X, pub.Y, t.Bytes())
+	x, _ = c.Add(x1, y1, x2, y2)
+
+	x.Add(x, e)
+	x.Mod(x, N)
+	return x.Cmp(r) == 0
+}
+
+func msgHash(za, msg []byte) (*big.Int, error) {
+	e := sm3.New()
+	e.Write(za)
+	e.Write(msg)
+	return new(big.Int).SetBytes(e.Sum(nil)[:32]), nil
+}
+
+// ZA = H256(ENTLA || IDA || a || b || xG || yG || xA || yA)
+func ZA(pub *PublicKey, uid []byte) ([]byte, error) {
+	za := sm3.New()
+	uidLen := len(uid)
+	if uidLen >= 8192 {
+		return []byte{}, errors.New("SM2: uid too large")
+	}
+	Entla := uint16(8 * uidLen)
+	za.Write([]byte{byte((Entla >> 8) & 0xFF)})
+	za.Write([]byte{byte(Entla & 0xFF)})
+	za.Write(uid)
+	za.Write(sm2P256ToBig(&sm2P256.a).Bytes())
+	za.Write(sm2P256.B.Bytes())
+	za.Write(sm2P256.Gx.Bytes())
+	za.Write(sm2P256.Gy.Bytes())
+
+	xBuf := pub.X.Bytes()
+	yBuf := pub.Y.Bytes()
+	if n := len(xBuf); n < 32 {
+		xBuf = append(zeroByteSlice[:32-n], xBuf...)
+	}
+	za.Write(xBuf)
+	za.Write(yBuf)
+	return za.Sum(nil)[:32], nil
 }
 
 // 32byte
