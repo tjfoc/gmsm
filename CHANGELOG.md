@@ -49,6 +49,6 @@
 
 1.1.1更新
 - 新增以下函数支持用户其他信息
-    SignDigitToSignData 将签名所得的大数r和s转换为签名的格式
-    Sm2Sign     支持用户信息的签名
-    Sm2Verify   支持用户信息的验签
+    SignDigitToSignData 将签名所得的大数r和s转换为签名的格式<br>
+    Sm2Sign     支持用户信息的签名<br>
+    Sm2Verify   支持用户信息的验签<br>
