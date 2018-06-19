@@ -60,6 +60,16 @@ func SignDigitToSignData(r, s *big.Int) ([]byte, error) {
 	return asn1.Marshal(sm2Signature{r, s})
 }
 
+func SignDataToSignDigit(sign []byte) (*big.Int, *big.Int, error) {
+	var sm2Sign sm2Signature
+
+	_, err := asn1.Unmarshal(sign, &sm2Sign)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sm2Sign.R, sm2Sign.S, nil
+}
+
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
 	r, s, err := Sign(priv, msg)
