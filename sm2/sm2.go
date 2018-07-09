@@ -502,6 +502,7 @@ func Decompress(a []byte) *PublicKey {
 	var aa, xx, xx3 sm2P256FieldElement
 
 	x := new(big.Int).SetBytes(a[1:])
+	initP256Sm2()
 	curve := sm2P256
 	sm2P256FromBig(&xx, x)
 	sm2P256Square(&xx3, &xx)       // x3 = x ^ 2
