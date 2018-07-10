@@ -433,11 +433,12 @@ func Encrypt(pub *PublicKey, data []byte) ([]byte, error) {
 		for i := 0; i < length; i++ {
 			c[96+i] ^= data[i]
 		}
-		return c, nil
+		return append([]byte{0x04}, c...), nil
 	}
 }
 
 func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
+	data = data[1:]
 	length := len(data) - 96
 	curve := priv.Curve
 	x := new(big.Int).SetBytes(data[:32])
@@ -451,7 +452,6 @@ func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 	if n := len(y2Buf); n < 32 {
 		y2Buf = append(zeroByteSlice[:32-n], y2Buf...)
 	}
-
 	c, ok := kdf(x2Buf, y2Buf, length)
 	if !ok {
 		return nil, errors.New("Decrypt: failed to decrypt")
