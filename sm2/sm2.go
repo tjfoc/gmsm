@@ -56,6 +56,20 @@ func (priv *PrivateKey) Public() crypto.PublicKey {
 	return &priv.PublicKey
 }
 
+func SignDigitToSignData(r, s *big.Int) ([]byte, error) {
+	return asn1.Marshal(sm2Signature{r, s})
+}
+
+func SignDataToSignDigit(sign []byte) (*big.Int, *big.Int, error) {
+	var sm2Sign sm2Signature
+
+	_, err := asn1.Unmarshal(sign, &sm2Sign)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sm2Sign.R, sm2Sign.S, nil
+}
+
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
 	r, s, err := Sign(priv, msg)
@@ -231,7 +245,7 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	// 调整算法细节以实现SM2
 	t := new(big.Int).Add(r, s)
 	t.Mod(t, N)
-	if N.Sign() == 0 {
+	if t.Sign() == 0 {
 		return false
 	}
 
@@ -246,16 +260,129 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	return x.Cmp(r) == 0
 }
 
+func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
+	za, err := ZA(&priv.PublicKey, uid)
+	if err != nil {
+		return nil, nil, err
+	}
+	e, err := msgHash(za, msg)
+	if err != nil {
+		return nil, nil, err
+	}
+	c := priv.PublicKey.Curve
+	N := c.Params().N
+	if N.Sign() == 0 {
+		return nil, nil, errZeroParam
+	}
+	var k *big.Int
+	for { // 调整算法细节以实现SM2
+		for {
+			k, err = randFieldElement(c, rand.Reader)
+			if err != nil {
+				r = nil
+				return
+			}
+			r, _ = priv.Curve.ScalarBaseMult(k.Bytes())
+			r.Add(r, e)
+			r.Mod(r, N)
+			if r.Sign() != 0 {
+				break
+			}
+			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
+				break
+			}
+		}
+		rD := new(big.Int).Mul(priv.D, r)
+		s = new(big.Int).Sub(k, rD)
+		d1 := new(big.Int).Add(priv.D, one)
+		d1Inv := new(big.Int).ModInverse(d1, N)
+		s.Mul(s, d1Inv)
+		s.Mod(s, N)
+		if s.Sign() != 0 {
+			break
+		}
+	}
+	return
+}
+
+func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
+	c := pub.Curve
+	N := c.Params().N
+	one := new(big.Int).SetInt64(1)
+	if r.Cmp(one) < 0 || s.Cmp(one) < 0 {
+		return false
+	}
+	if r.Cmp(N) >= 0 || s.Cmp(N) >= 0 {
+		return false
+	}
+	za, err := ZA(pub, uid)
+	if err != nil {
+		return false
+	}
+	e, err := msgHash(za, msg)
+	if err != nil {
+		return false
+	}
+	t := new(big.Int).Add(r, s)
+	t.Mod(t, N)
+	if t.Sign() == 0 {
+		return false
+	}
+	var x *big.Int
+	x1, y1 := c.ScalarBaseMult(s.Bytes())
+	x2, y2 := c.ScalarMult(pub.X, pub.Y, t.Bytes())
+	x, _ = c.Add(x1, y1, x2, y2)
+
+	x.Add(x, e)
+	x.Mod(x, N)
+	return x.Cmp(r) == 0
+}
+
+func msgHash(za, msg []byte) (*big.Int, error) {
+	e := sm3.New()
+	e.Write(za)
+	e.Write(msg)
+	return new(big.Int).SetBytes(e.Sum(nil)[:32]), nil
+}
+
+// ZA = H256(ENTLA || IDA || a || b || xG || yG || xA || yA)
+func ZA(pub *PublicKey, uid []byte) ([]byte, error) {
+	za := sm3.New()
+	uidLen := len(uid)
+	if uidLen >= 8192 {
+		return []byte{}, errors.New("SM2: uid too large")
+	}
+	Entla := uint16(8 * uidLen)
+	za.Write([]byte{byte((Entla >> 8) & 0xFF)})
+	za.Write([]byte{byte(Entla & 0xFF)})
+	za.Write(uid)
+	za.Write(sm2P256ToBig(&sm2P256.a).Bytes())
+	za.Write(sm2P256.B.Bytes())
+	za.Write(sm2P256.Gx.Bytes())
+	za.Write(sm2P256.Gy.Bytes())
+
+	xBuf := pub.X.Bytes()
+	yBuf := pub.Y.Bytes()
+	if n := len(xBuf); n < 32 {
+		xBuf = append(zeroByteSlice()[:32-n], xBuf...)
+	}
+	za.Write(xBuf)
+	za.Write(yBuf)
+	return za.Sum(nil)[:32], nil
+}
+
 // 32byte
-var zeroByteSlice = []byte{
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
+func zeroByteSlice() []byte {
+	return []byte{
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+	}
 }
 
 /*
@@ -281,16 +408,16 @@ func Encrypt(pub *PublicKey, data []byte) ([]byte, error) {
 		x2Buf := x2.Bytes()
 		y2Buf := y2.Bytes()
 		if n := len(x1Buf); n < 32 {
-			x1Buf = append(zeroByteSlice[:32-n], x1Buf...)
+			x1Buf = append(zeroByteSlice()[:32-n], x1Buf...)
 		}
 		if n := len(y1Buf); n < 32 {
-			y1Buf = append(zeroByteSlice[:32-n], y1Buf...)
+			y1Buf = append(zeroByteSlice()[:32-n], y1Buf...)
 		}
 		if n := len(x2Buf); n < 32 {
-			x2Buf = append(zeroByteSlice[:32-n], x2Buf...)
+			x2Buf = append(zeroByteSlice()[:32-n], x2Buf...)
 		}
 		if n := len(y2Buf); n < 32 {
-			y2Buf = append(zeroByteSlice[:32-n], y2Buf...)
+			y2Buf = append(zeroByteSlice()[:32-n], y2Buf...)
 		}
 		c = append(c, x1Buf...) // x分量
 		c = append(c, y1Buf...) // y分量
@@ -308,11 +435,12 @@ func Encrypt(pub *PublicKey, data []byte) ([]byte, error) {
 		for i := 0; i < length; i++ {
 			c[96+i] ^= data[i]
 		}
-		return c, nil
+		return append([]byte{0x04}, c...), nil
 	}
 }
 
 func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
+	data = data[1:]
 	length := len(data) - 96
 	curve := priv.Curve
 	x := new(big.Int).SetBytes(data[:32])
@@ -321,12 +449,11 @@ func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 	x2Buf := x2.Bytes()
 	y2Buf := y2.Bytes()
 	if n := len(x2Buf); n < 32 {
-		x2Buf = append(zeroByteSlice[:32-n], x2Buf...)
+		x2Buf = append(zeroByteSlice()[:32-n], x2Buf...)
 	}
 	if n := len(y2Buf); n < 32 {
-		y2Buf = append(zeroByteSlice[:32-n], y2Buf...)
+		y2Buf = append(zeroByteSlice()[:32-n], y2Buf...)
 	}
-
 	c, ok := kdf(x2Buf, y2Buf, length)
 	if !ok {
 		return nil, errors.New("Decrypt: failed to decrypt")
@@ -357,3 +484,43 @@ func (z *zr) Read(dst []byte) (n int, err error) {
 }
 
 var zeroReader = &zr{}
+
+func getLastBit(a *big.Int) uint {
+	return a.Bit(0)
+}
+
+func Compress(a *PublicKey) []byte {
+	buf := []byte{}
+	yp := getLastBit(a.Y)
+	buf = append(buf, a.X.Bytes()...)
+	if n := len(a.X.Bytes()); n < 32 {
+		buf = append(zeroByteSlice()[:(32-n)], buf...)
+	}
+	buf = append([]byte{byte(yp)}, buf...)
+	return buf
+}
+
+func Decompress(a []byte) *PublicKey {
+	var aa, xx, xx3 sm2P256FieldElement
+
+	P256Sm2()
+	x := new(big.Int).SetBytes(a[1:])
+	curve := sm2P256
+	sm2P256FromBig(&xx, x)
+	sm2P256Square(&xx3, &xx)       // x3 = x ^ 2
+	sm2P256Mul(&xx3, &xx3, &xx)    // x3 = x ^ 2 * x
+	sm2P256Mul(&aa, &curve.a, &xx) // a = a * x
+	sm2P256Add(&xx3, &xx3, &aa)
+	sm2P256Add(&xx3, &xx3, &curve.b)
+
+	y2 := sm2P256ToBig(&xx3)
+	y := new(big.Int).ModSqrt(y2, sm2P256.P)
+	if getLastBit(y) != uint(a[0]) {
+		y.Sub(sm2P256.P, y)
+	}
+	return &PublicKey{
+		Curve: P256Sm2(),
+		X:     x,
+		Y:     y,
+	}
+}
