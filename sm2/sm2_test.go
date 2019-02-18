@@ -42,7 +42,7 @@ func TestSm2(t *testing.T) {
 		fmt.Printf("Error: failed to encrypt %s: %v\n", msg, err)
 		return
 	}
-	fmt.Printf("Cipher text = %v\n", d0)
+	// fmt.Printf("Cipher text = %v\n", d0)
 	d1, err := priv.Decrypt(d0)
 	if err != nil {
 		fmt.Printf("Error: failed to decrypt: %v\n", err)
@@ -110,7 +110,7 @@ func TestSm2(t *testing.T) {
 	}
 	err = req.CheckSignature()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Request CheckSignature error:%v", err)
 	} else {
 		fmt.Printf("CheckSignature ok\n")
 	}

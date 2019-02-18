@@ -33,6 +33,10 @@ import (
 	"github.com/tjfoc/gmsm/sm3"
 )
 
+var (
+	default_uid = []byte{0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38}
+)
+
 const (
 	aesIV = "IV for <SM2> CTR"
 )
@@ -72,7 +76,8 @@ func SignDataToSignDigit(sign []byte) (*big.Int, *big.Int, error) {
 
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
-	r, s, err := Sign(priv, msg)
+	// r, s, err := Sign(priv, msg)
+	r, s, err := Sm2Sign(priv, msg, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +95,8 @@ func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 	if err != nil {
 		return false
 	}
-	return Verify(pub, msg, sm2Sign.R, sm2Sign.S)
+	return Sm2Verify(pub, msg, nil, sm2Sign.R, sm2Sign.S)
+	// return Verify(pub, msg, sm2Sign.R, sm2Sign.S)
 }
 
 func (pub *PublicKey) Encrypt(data []byte) ([]byte, error) {
@@ -347,6 +353,9 @@ func msgHash(za, msg []byte) (*big.Int, error) {
 
 // ZA = H256(ENTLA || IDA || a || b || xG || yG || xA || yA)
 func ZA(pub *PublicKey, uid []byte) ([]byte, error) {
+	if len(uid) <= 0 {
+		uid = default_uid
+	}
 	za := sm3.New()
 	uidLen := len(uid)
 	if uidLen >= 8192 {
