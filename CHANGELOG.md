@@ -1,25 +1,20 @@
 ## 更新日志
 
-1.0 更新:
-- 添加以下oid<br>
-    SM3WithSM2 1.2.156.10197.1.501<br>
-    SHA1WithSM2 1.2.156.10197.1.502<br>
-    SHA256WithSM2 1.2.156.10197.1.503<br>
+### 1.2 更新(Feb 20, 2019)
 
-- x509生成的证书如今可以使用SM3作为hash算法
+- [NEW] 实现PKCS#7签名及验签
+- [FIX] SM2 签名及验签方法完全遵循标准GM/T 0003系列，兼容CFCA Java-SDK
 
-- 引入了以下hash算法
-    RIPEMD160<br>
-    SHA3_256<br>
-    SHA3_384<br>
-    SHA3_512<br>
-    SHA3_SM3<br>
-  用户需要自己安装golang.org/x/crypto
+**破坏性更新，证书与之前版本不兼容**
 
-1.0.1 更新:
-- 添加全局的sbox改进sm4效率(by https://github.com/QwertyJack)
+### 1.1.1更新
+- 新增以下函数支持用户其他信息<br>
+    SignDigitToSignData 将签名所得的大数r和s转换为签名的格式<br>
+    Sm2Sign     支持用户信息的签名<br>
+    Sm2Verify   支持用户信息的验签<br>
 
-1.1.0更新:
+
+### 1.1.0更新:
 - 改进新能，具体提升如下
 &emsp;注:本次优化并不彻底，只是第一次尝试优化，后续有时间还会继续优化
 ```
@@ -47,8 +42,26 @@
             BenchmarkSM2-4          1000   1725001 ns/op  118331 B/op    1679 allocs/op
 ```
 
-1.1.1更新
-- 新增以下函数支持用户其他信息<br>
-    SignDigitToSignData 将签名所得的大数r和s转换为签名的格式<br>
-    Sm2Sign     支持用户信息的签名<br>
-    Sm2Verify   支持用户信息的验签<br>
+### 1.0.1 更新:
+- 添加全局的sbox改进sm4效率(by https://github.com/QwertyJack)
+
+
+### 1.0 更新:
+- 添加以下oid<br>
+    SM3WithSM2 1.2.156.10197.1.501<br>
+    SHA1WithSM2 1.2.156.10197.1.502<br>
+    SHA256WithSM2 1.2.156.10197.1.503<br>
+
+- x509生成的证书如今可以使用SM3作为hash算法
+
+- 引入了以下hash算法
+    RIPEMD160<br>
+    SHA3_256<br>
+    SHA3_384<br>
+    SHA3_512<br>
+    SHA3_SM3<br>
+  用户需要自己安装golang.org/x/crypto
+
+
+
+
