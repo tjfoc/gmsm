@@ -220,7 +220,7 @@ func Sign(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 			if r.Sign() != 0 {
 				break
 			}
-			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
+			if t := new(big.Int).Add(r, k); t.Cmp(N) != 0 {
 				break
 			}
 		}
@@ -294,7 +294,7 @@ func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
 			if r.Sign() != 0 {
 				break
 			}
-			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
+			if t := new(big.Int).Add(r, k); t.Cmp(N) != 0 {
 				break
 			}
 		}
