@@ -218,10 +218,9 @@ func Sign(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 			r.Add(r, e)
 			r.Mod(r, N)
 			if r.Sign() != 0 {
-				break
-			}
-			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
-				break
+				if t := new(big.Int).Add(r, k); t.Cmp(N) != 0 {
+					break
+				}
 			}
 		}
 		rD := new(big.Int).Mul(priv.D, r)
@@ -292,10 +291,9 @@ func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
 			r.Add(r, e)
 			r.Mod(r, N)
 			if r.Sign() != 0 {
-				break
-			}
-			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
-				break
+				if t := new(big.Int).Add(r, k); t.Cmp(N) != 0 {
+					break
+				}
 			}
 		}
 		rD := new(big.Int).Mul(priv.D, r)
