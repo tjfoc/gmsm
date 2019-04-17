@@ -2066,9 +2066,15 @@ func (c *Certificate) CreateCRL(rand io.Reader, priv interface{}, revokedCerts [
 		return
 	}
 
-	h := hashFunc.New()
-	h.Write(tbsCertListContents)
-	digest := h.Sum(nil)
+	digest := tbsCertListContents
+	switch hashFunc {
+	case SM3:
+		break
+	default:
+		h := hashFunc.New()
+		h.Write(tbsCertListContents)
+		digest = h.Sum(nil)
+	}
 
 	var signature []byte
 	signature, err = key.Sign(rand, digest, hashFunc)
