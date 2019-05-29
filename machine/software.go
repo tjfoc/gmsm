@@ -5,9 +5,9 @@ import (
 
 	"math/big"
 	"log"
-	"github.com/gmsm/sm2"
-	"github.com/gmsm/sm3"
-	"github.com/gmsm/sm4"
+	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/sm3"
+	"github.com/tjfoc/gmsm/sm4"
 )
 
 type Software struct {

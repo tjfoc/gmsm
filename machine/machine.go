@@ -2,8 +2,8 @@
 package machine
 
 import (
-	"github.com/gmsm/sm2"
-	"github.com/gmsm/sm4"
+	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/sm4"
 	"math/big"
 	)
 
