@@ -141,6 +141,7 @@ func ParsePKCS7(data []byte) (p7 *PKCS7, err error) {
 	// fmt.Printf("--> Content Type: %s", info.ContentType)
 	switch {
 	case info.ContentType.Equal(oidSignedData):
+		return parseSignedData(info.Content.Bytes)
 	case info.ContentType.Equal(oidSMSignedData):
 		return parseSignedData(info.Content.Bytes)
 	case info.ContentType.Equal(oidEnvelopedData):
