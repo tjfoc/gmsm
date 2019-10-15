@@ -1,6 +1,12 @@
 ## tjfocssl-1.0.0使用说明
 
-tjfocssl-1.0.0目前一共提供了两个命令：gensm2和sm2
+开发语言：go。
+
+语言版本：go1.12.3。
+
+编译操作：在 $GOPATH/tjfoc/gmsm/tools/tjfocssl/ 目录下使用 go build 指令进行编译。
+
+基本介绍：tjfocssl-1.0.0目前一共提供了两个命令：gensm2和sm2。
 
 ### gensm2
 
