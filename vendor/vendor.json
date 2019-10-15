@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "8i6otUMEPcInD0hAl6RD6MEEoFM=",
+			"path": "github.com/urfave/cli",
+			"revision": "a221e662f14fd7404302444a5c4293409a401210",
+			"revisionTime": "2019-10-12T16:55:02Z"
+		},
+		{
 			"checksumSHA1": "y/oIaxq2d3WPizRZfVjo8RCRYTU=",
 			"path": "golang.org/x/crypto/ripemd160",
 			"revision": "9f005a07e0d31d45e6656d241bb5c0f2efd4bc94",
