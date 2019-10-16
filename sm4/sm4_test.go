@@ -44,7 +44,7 @@ func TestSM4(t *testing.T) {
 	c.Decrypt(d1, d0)
 	fmt.Printf("d1 = %x\n", d1)
 	if sa := testCompare(data, d1); sa != true {
-		fmt.Printf("Error data!")
+		t.Fatal("Error data!")
 	}
 }
 
