@@ -2394,7 +2394,7 @@ func ParseCertificateRequest(asn1Data []byte) (*CertificateRequest, error) {
 
 func parseCertificateRequest(in *certificateRequest) (*CertificateRequest, error) {
 	out := &CertificateRequest{
-		Raw: in.Raw,
+		Raw:                      in.Raw,
 		RawTBSCertificateRequest: in.TBSCSR.Raw,
 		RawSubjectPublicKeyInfo:  in.TBSCSR.PublicKey.Raw,
 		RawSubject:               in.TBSCSR.Subject.FullBytes,
@@ -2482,7 +2482,7 @@ func CreateCertificateRequestToPem(FileName string, template *CertificateRequest
 		Type:  "CERTIFICATE REQUEST",
 		Bytes: der,
 	}
-	file, err := os.Create(FileName)
+	file, err := os.OpenFile(FileName, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return false, err
 	}
@@ -2531,7 +2531,7 @@ func CreateCertificateToPem(FileName string, template, parent *Certificate, pubK
 		Type:  "CERTIFICATE",
 		Bytes: der,
 	}
-	file, err := os.Create(FileName)
+	file, err := os.OpenFile(FileName, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return false, err
 	}

@@ -425,7 +425,7 @@ func WritePrivateKeytoPem(FileName string, key *PrivateKey, pwd []byte) (bool, e
 			Bytes: der,
 		}
 	}
-	file, err := os.Create(FileName)
+	file, err := os.OpenFile(FileName, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return false, err
 	}
@@ -475,7 +475,7 @@ func WritePublicKeytoPem(FileName string, key *PublicKey, _ []byte) (bool, error
 		Type:  "PUBLIC KEY",
 		Bytes: der,
 	}
-	file, err := os.Create(FileName)
+	file, err := os.OpenFile(FileName, os.O_WRONLY|os.O_CREATE, 0600)
 	defer file.Close()
 	if err != nil {
 		return false, err

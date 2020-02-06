@@ -309,7 +309,7 @@ func WriteKeyToPem(FileName string, key SM4Key, pwd []byte) (bool, error) {
 			Bytes: key,
 		}
 	}
-	file, err := os.Create(FileName)
+	file, err := os.OpenFile(FileName, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return false, err
 	}
