@@ -262,7 +262,7 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	e := new(big.Int).SetBytes(hash)
 	x.Add(x, e)
 	x.Mod(x, N)
-	return x.Cmp(r) == 0
+	return x.Cmp(r)==0
 }
 
 func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
@@ -340,7 +340,31 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 
 	x.Add(x, e)
 	x.Mod(x, N)
-	return x.Cmp(r) == 0
+	if x.Cmp(r) == 0 {
+		return true
+	} else { //为兼容旧证书，使用默认uid重新验证
+		za, err := ZA(pub, default_uid)
+		if err != nil {
+			return false
+		}
+		e, err := msgHash(za, msg)
+		if err != nil {
+			return false
+		}
+		t := new(big.Int).Add(r, s)
+		t.Mod(t, N)
+		if t.Sign() == 0 {
+			return false
+		}
+		var x *big.Int
+		x1, y1 := c.ScalarBaseMult(s.Bytes())
+		x2, y2 := c.ScalarMult(pub.X, pub.Y, t.Bytes())
+		x, _ = c.Add(x1, y1, x2, y2)
+
+		x.Add(x, e)
+		x.Mod(x, N)
+		return x.Cmp(r) == 0
+	}
 }
 
 func msgHash(za, msg []byte) (*big.Int, error) {
