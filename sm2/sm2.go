@@ -78,7 +78,7 @@ func SignDataToSignDigit(sign []byte) (*big.Int, *big.Int, error) {
 func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
 	// r, s, err := Sign(priv, msg)
 	r, s, err := Sm2Sign(priv, msg, nil)
-	if err != nil {CheckSignatureFrom
+	if err != nil {
 		return nil, err
 	}
 	return asn1.Marshal(sm2Signature{r, s})
