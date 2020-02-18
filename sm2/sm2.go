@@ -353,6 +353,9 @@ func msgHash(za, msg []byte) (*big.Int, error) {
 // ZA = H256(ENTLA || IDA || a || b || xG || yG || xA || yA)
 func ZA(pub *PublicKey, uid []byte) ([]byte, error) {
 	za := sm3.New()
+	if len(uid) <= 0 {
+		uid = default_uid
+	}
 	uidLen := len(uid)
 	if uidLen >= 8192 {
 		return []byte{}, errors.New("SM2: uid too large")
