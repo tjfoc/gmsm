@@ -51,7 +51,7 @@ var (
 	oidAttributeContentType   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 3}
 	oidAttributeMessageDigest = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 4}
 	oidAttributeSigningTime   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 5}
-
+    oidSM3withSM2=asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 501}
 	oidDSASM2 = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301, 1}
 )
 
@@ -268,7 +268,7 @@ func getSignatureAlgorithmByHash(hash Hash, oid asn1.ObjectIdentifier) Signature
 	switch hash {
 	case SM3:
 		switch {
-		case oid.Equal(oidDSASM2):
+		case oid.Equal(oidSM3withSM2):
 			return SM2WithSM3
 		}
 	case SHA256:
