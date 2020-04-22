@@ -104,6 +104,7 @@ func (pub *PublicKey) Encrypt(data []byte) ([]byte, error) {
 }
 
 var one = new(big.Int).SetInt64(1)
+var two = new(big.Int).SetInt64(2)
 
 func intToBytes(x int) []byte {
 	var buf = make([]byte, 4)
@@ -146,7 +147,7 @@ func randFieldElement(c elliptic.Curve, rand io.Reader) (k *big.Int, err error) 
 		return
 	}
 	k = new(big.Int).SetBytes(b)
-	n := new(big.Int).Sub(params.N, one)
+	n := new(big.Int).Sub(params.N, two)
 	k.Mod(k, n)
 	k.Add(k, one)
 	return
