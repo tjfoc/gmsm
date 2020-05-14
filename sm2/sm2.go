@@ -112,15 +112,16 @@ func intToBytes(x int) []byte {
 	return buf
 }
 
-func kdf(x, y []byte, length int) ([]byte, bool) {
+func kdf(length int, x ...[]byte) ([]byte, bool) {
 	var c []byte
 
 	ct := 1
 	h := sm3.New()
-	x = append(x, y...)
 	for i, j := 0, (length+31)/32; i < j; i++ {
 		h.Reset()
-		h.Write(x)
+		for _, xx := range x {
+			h.Write(xx)
+		}
 		h.Write(intToBytes(ct))
 		hash := h.Sum(nil)
 		if i+1 == j && length%32 != 0 {
@@ -262,7 +263,7 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	e := new(big.Int).SetBytes(hash)
 	x.Add(x, e)
 	x.Mod(x, N)
-	return x.Cmp(r)==0
+	return x.Cmp(r) == 0
 }
 
 func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
@@ -458,7 +459,7 @@ func Encrypt(pub *PublicKey, data []byte) ([]byte, error) {
 		tm = append(tm, y2Buf...)
 		h := sm3.Sm3Sum(tm)
 		c = append(c, h...)
-		ct, ok := kdf(x2Buf, y2Buf, length) // 密文
+		ct, ok := kdf(length, x2Buf, y2Buf) // 密文
 		if !ok {
 			continue
 		}
@@ -485,7 +486,7 @@ func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 	if n := len(y2Buf); n < 32 {
 		y2Buf = append(zeroByteSlice()[:32-n], y2Buf...)
 	}
-	c, ok := kdf(x2Buf, y2Buf, length)
+	c, ok := kdf(length, x2Buf, y2Buf)
 	if !ok {
 		return nil, errors.New("Decrypt: failed to decrypt")
 	}
@@ -501,6 +502,88 @@ func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 		return c, errors.New("Decrypt: failed to decrypt")
 	}
 	return c, nil
+}
+
+// keXHat 计算 x = 2^w + (x & (2^w-1))
+// 密钥协商算法辅助函数
+func keXHat(x *big.Int) (xul *big.Int) {
+	buf := x.Bytes()
+	for i := 0; i < len(buf)-16; i++ {
+		buf[i] = 0
+	}
+	if len(buf) >= 16 {
+		c := buf[len(buf)-16]
+		buf[len(buf)-16] = c & 0x7f
+	}
+
+	r := new(big.Int).SetBytes(buf)
+	_2w := new(big.Int).SetBytes([]byte{
+		0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+	return r.Add(r, _2w)
+}
+
+// keyExchange 为SM2密钥交换算法的第二部和第三步复用部分，协商的双方均调用此函数计算共同的字节串
+//
+// klen: 密钥长度
+// ida, idb: 协商双方的标识，ida为密钥协商算法发起方标识，idb为响应方标识
+// pri: 函数调用者的密钥
+// pub: 对方的公钥
+// rpri: 函数调用者生成的临时SM2密钥
+// rpub: 对方发来的临时SM2公钥
+// thisIsA: 如果是A调用，文档中的协商第三步，设置为true，否则设置为false
+//
+// 返回 k 为klen长度的字节串
+func keyExchange(klen int, ida, idb []byte, pri *PrivateKey, pub *PublicKey, rpri *PrivateKey, rpub *PublicKey, thisISA bool) (k []byte, err error) {
+	curve := P256Sm2()
+	N := curve.Params().N
+
+	x2hat := keXHat(rpri.PublicKey.X)
+	x2rb := new(big.Int).Mul(x2hat, rpri.D)
+	tbt := new(big.Int).Add(pri.D, x2rb)
+	tb := new(big.Int).Mod(tbt, N)
+	if !curve.IsOnCurve(rpub.X, rpub.Y) {
+		err = errors.New("Ra not on curve")
+		return
+	}
+	x1hat := keXHat(rpub.X)
+	ramx1, ramy1 := curve.ScalarMult(rpub.X, rpub.Y, x1hat.Bytes())
+	vxt, vyt := curve.Add(pub.X, pub.Y, ramx1, ramy1)
+
+	vx, vy := curve.ScalarMult(vxt, vyt, tb.Bytes())
+	pza := pub
+	if thisISA {
+		pza = &pri.PublicKey
+	}
+	za, err := ZA(pza, ida)
+	if err != nil {
+		return
+	}
+	zero := new(big.Int)
+	if vx.Cmp(zero) == 0 || vy.Cmp(zero) == 0 {
+		err = errors.New("V is infinite")
+	}
+	pzb := pub
+	if !thisISA {
+		pzb = &pri.PublicKey
+	}
+	zb, err := ZA(pzb, idb)
+	k, ok := kdf(klen, vx.Bytes(), vy.Bytes(), za, zb)
+	if !ok {
+		err = errors.New("kdf: zero key")
+		return
+	}
+	return k, nil
+}
+
+// KeyExchangeB 协商第二部，用户B调用， 返回共享密钥k
+func KeyExchangeB(klen int, ida, idb []byte, priB *PrivateKey, pubA *PublicKey, rpriB *PrivateKey, rpubA *PublicKey) (k []byte, err error) {
+	return keyExchange(klen, ida, idb, priB, pubA, rpriB, rpubA, false)
+}
+
+// KeyExchangeA 协商第二部，用户A调用，返回共享密钥k
+func KeyExchangeA(klen int, ida, idb []byte, priA *PrivateKey, pubB *PublicKey, rpriA *PrivateKey, rpubB *PublicKey) (k []byte, err error) {
+	return keyExchange(klen, ida, idb, priA, pubB, rpriA, rpubB, true)
 }
 
 type zr struct {
