@@ -77,7 +77,7 @@ func SignDataToSignDigit(sign []byte) (*big.Int, *big.Int, error) {
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
 	// r, s, err := Sign(priv, msg)
-	r, s, err := Sm2Sign(priv, msg, nil)
+	r, s, err := Sm2Sign(priv, msg, default_uid)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 	if err != nil {
 		return false
 	}
-	return Sm2Verify(pub, msg, nil, sm2Sign.R, sm2Sign.S)
+	return Sm2Verify(pub, msg, default_uid, sm2Sign.R, sm2Sign.S)
 	// return Verify(pub, msg, sm2Sign.R, sm2Sign.S)
 }
 
@@ -340,31 +340,7 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 
 	x.Add(x, e)
 	x.Mod(x, N)
-	if x.Cmp(r) == 0 {
-		return true
-	} else { //为兼容旧证书，使用默认uid重新验证
-		za, err := ZA(pub, default_uid)
-		if err != nil {
-			return false
-		}
-		e, err := msgHash(za, msg)
-		if err != nil {
-			return false
-		}
-		t := new(big.Int).Add(r, s)
-		t.Mod(t, N)
-		if t.Sign() == 0 {
-			return false
-		}
-		var x *big.Int
-		x1, y1 := c.ScalarBaseMult(s.Bytes())
-		x2, y2 := c.ScalarMult(pub.X, pub.Y, t.Bytes())
-		x, _ = c.Add(x1, y1, x2, y2)
-
-		x.Add(x, e)
-		x.Mod(x, N)
-		return x.Cmp(r) == 0
-	}
+	return x.Cmp(r) == 0
 }
 
 func msgHash(za, msg []byte) (*big.Int, error) {
