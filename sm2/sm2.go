@@ -267,6 +267,9 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 }
 
 func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
+	if len(uid) == 0 {
+		uid=default_uid
+	}
 	za, err := ZA(&priv.PublicKey, uid)
 	if err != nil {
 		return nil, nil, err
@@ -320,6 +323,9 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 	}
 	if r.Cmp(N) >= 0 || s.Cmp(N) >= 0 {
 		return false
+	}
+	if len(uid) == 0 {
+		uid=default_uid
 	}
 	za, err := ZA(pub, uid)
 	if err != nil {
