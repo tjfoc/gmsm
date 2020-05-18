@@ -10,6 +10,7 @@ go:
   #- git commit -m 'update .gitignore'
   
 install:
+  - export GOPROXY=https://goproxy.cn
   - go get -v  golang.org/x/lint
   - go build -v ./sm2
   - go build -v ./sm3
