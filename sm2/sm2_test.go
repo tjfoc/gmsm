@@ -268,11 +268,11 @@ func TestKEB2(t *testing.T) {
 	rb.D = new(big.Int).SetBytes(rbBuf)
 	rb.PublicKey.X, rb.PublicKey.Y = curve.ScalarBaseMult(rbBuf)
 
-	k1, err := KeyExchangeB(16, ida, idb, db, &da.PublicKey, rb, &ra.PublicKey)
+	k1,Sb,S2, err := KeyExchangeB(16, ida, idb, db, &da.PublicKey, rb, &ra.PublicKey)
 	if err != nil {
 		t.Error(err)
 	}
-	k2, err := KeyExchangeA(16, ida, idb, da, &db.PublicKey, ra, &rb.PublicKey)
+	k2,S1,Sa, err := KeyExchangeA(16, ida, idb, da, &db.PublicKey, ra, &rb.PublicKey)
 	if err != nil {
 		t.Error(err)
 	}
@@ -281,5 +281,11 @@ func TestKEB2(t *testing.T) {
 	}
 	if bytes.Compare(k1, expk) != 0 {
 		t.Errorf("expected %x, found %x", expk, k1)
+	}
+	if bytes.Compare(S1, Sb) != 0 {
+		t.Error("hash verfication failed")
+	}
+	if bytes.Compare(Sa, S2) != 0 {
+		t.Error("hash verfication failed")
 	}
 }
