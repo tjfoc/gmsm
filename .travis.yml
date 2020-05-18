@@ -2,7 +2,7 @@ sudo: false
 language: 
   - go
 go:
-  - 1.11.0
+  - 1.11.2
 
 #before_install:
   #- git rm -r --cached .
