@@ -99,6 +99,9 @@ import github.com/tjfoc/gmsm/sm4
 
     func pkcs5UnPadding(src []byte) []byte {
         length := len(src)
+        if(length==0){
+            return nil
+        }
     	unpadding := int(src[length-1])
     	return src[:(length - unpadding)]
     }
