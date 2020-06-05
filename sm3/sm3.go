@@ -119,7 +119,64 @@ func (sm3 *SM3) update(msg []byte, nblocks int) {
 	}
 	sm3.digest[0], sm3.digest[1], sm3.digest[2], sm3.digest[3], sm3.digest[4], sm3.digest[5], sm3.digest[6], sm3.digest[7] = a, b, c, d, e, f, g, h
 }
+func (sm3 *SM3) update2(msg []byte, nblocks int)([8]uint32){
+	var w [68]uint32
+	var w1 [64]uint32
 
+	a, b, c, d, e, f, g, h := sm3.digest[0], sm3.digest[1], sm3.digest[2], sm3.digest[3], sm3.digest[4], sm3.digest[5], sm3.digest[6], sm3.digest[7]
+	for len(msg) >= 64 {
+		for i := 0; i < 16; i++ {
+			w[i] = binary.BigEndian.Uint32(msg[4*i : 4*(i+1)])
+		}
+		for i := 16; i < 68; i++ {
+			w[i] = sm3.p1(w[i-16]^w[i-9]^sm3.leftRotate(w[i-3], 15)) ^ sm3.leftRotate(w[i-13], 7) ^ w[i-6]
+		}
+		for i := 0; i < 64; i++ {
+			w1[i] = w[i] ^ w[i+4]
+		}
+		A, B, C, D, E, F, G, H := a, b, c, d, e, f, g, h
+		for i := 0; i < 16; i++ {
+			SS1 := sm3.leftRotate(sm3.leftRotate(A, 12)+E+sm3.leftRotate(0x79cc4519, uint32(i)), 7)
+			SS2 := SS1 ^ sm3.leftRotate(A, 12)
+			TT1 := sm3.ff0(A, B, C) + D + SS2 + w1[i]
+			TT2 := sm3.gg0(E, F, G) + H + SS1 + w[i]
+			D = C
+			C = sm3.leftRotate(B, 9)
+			B = A
+			A = TT1
+			H = G
+			G = sm3.leftRotate(F, 19)
+			F = E
+			E = sm3.p0(TT2)
+		}
+		for i := 16; i < 64; i++ {
+			SS1 := sm3.leftRotate(sm3.leftRotate(A, 12)+E+sm3.leftRotate(0x7a879d8a, uint32(i)), 7)
+			SS2 := SS1 ^ sm3.leftRotate(A, 12)
+			TT1 := sm3.ff1(A, B, C) + D + SS2 + w1[i]
+			TT2 := sm3.gg1(E, F, G) + H + SS1 + w[i]
+			D = C
+			C = sm3.leftRotate(B, 9)
+			B = A
+			A = TT1
+			H = G
+			G = sm3.leftRotate(F, 19)
+			F = E
+			E = sm3.p0(TT2)
+		}
+		a ^= A
+		b ^= B
+		c ^= C
+		d ^= D
+		e ^= E
+		f ^= F
+		g ^= G
+		h ^= H
+		msg = msg[64:]
+	}
+	var digest [8]uint32
+	digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7] = a, b, c, d, e, f, g, h
+   return digest
+}
 func New() hash.Hash {
 	var sm3 SM3
 
@@ -161,11 +218,9 @@ func (sm3 *SM3) Reset() {
 func (sm3 *SM3) Write(p []byte) (int, error) {
 	toWrite := len(p)
 	sm3.length += uint64(len(p) * 8)
-
 	msg := append(sm3.unhandleMsg, p...)
 	nblocks := len(msg) / sm3.BlockSize()
 	sm3.update(msg, nblocks)
-
 	// Update unhandleMsg
 	sm3.unhandleMsg = msg[nblocks*sm3.BlockSize():]
 
@@ -178,9 +233,8 @@ func (sm3 *SM3) Write(p []byte) (int, error) {
 func (sm3 *SM3) Sum(in []byte) []byte {
 	sm3.Write(in)
 	msg := sm3.pad()
-
-	// Finialize
-	sm3.update(msg, len(msg)/sm3.BlockSize())
+	//Finialize
+	digest:=sm3.update2(msg, len(msg)/sm3.BlockSize())
 
 	// save hash to in
 	needed := sm3.Size()
@@ -190,9 +244,8 @@ func (sm3 *SM3) Sum(in []byte) []byte {
 		in = newIn
 	}
 	out := in[len(in) : len(in)+needed]
-
 	for i := 0; i < 8; i++ {
-		binary.BigEndian.PutUint32(out[i*4:], sm3.digest[i])
+		binary.BigEndian.PutUint32(out[i*4:], digest[i])
 	}
 	return out
 
