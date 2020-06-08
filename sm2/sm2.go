@@ -627,7 +627,7 @@ func Decompress(a []byte) *PublicKey {
 
 	y2 := sm2P256ToBig(&xx3)
 	y := new(big.Int).ModSqrt(y2, sm2P256.P)
-	if getLastBit(y+2) != uint(a[0]) {
+	if getLastBit(y)+2!= uint(a[0]) {
 		y.Sub(sm2P256.P, y)
 	}
 	return &PublicKey{
