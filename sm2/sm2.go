@@ -608,7 +608,7 @@ func Compress(a *PublicKey) []byte {
 	if n := len(a.X.Bytes()); n < 32 {
 		buf = append(zeroByteSlice()[:(32-n)], buf...)
 	}
-	buf = append([]byte{byte(yp)}, buf...)
+	buf = append([]byte{byte(yp+2)}, buf...)
 	return buf
 }
 
@@ -627,7 +627,7 @@ func Decompress(a []byte) *PublicKey {
 
 	y2 := sm2P256ToBig(&xx3)
 	y := new(big.Int).ModSqrt(y2, sm2P256.P)
-	if getLastBit(y) != uint(a[0]) {
+	if getLastBit(y+2) != uint(a[0]) {
 		y.Sub(sm2P256.P, y)
 	}
 	return &PublicKey{
