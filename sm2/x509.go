@@ -2353,7 +2353,7 @@ func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, priv
 
 	digest := tbsCSRContents
 	switch template.SignatureAlgorithm {
-	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256:
+	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256,UnknownSignatureAlgorithm:
 		break
 	default:
 		h := hashFunc.New()

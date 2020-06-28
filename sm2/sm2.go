@@ -54,6 +54,12 @@ type PrivateKey struct {
 type sm2Signature struct {
 	R, S *big.Int
 }
+type sm2Cipher struct {
+	XCoordinate *big.Int
+	YCoordinate *big.Int
+	HASH []byte
+	CipherText []byte
+}
 
 // The SM2's private key contains the public key
 func (priv *PrivateKey) Public() crypto.PublicKey {
@@ -85,7 +91,7 @@ func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts)
 }
 
 func (priv *PrivateKey) Decrypt(data []byte) ([]byte, error) {
-	return Decrypt(priv, data)
+	return DecryptAsn1(priv, data)
 }
 
 func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
@@ -100,7 +106,7 @@ func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 }
 
 func (pub *PublicKey) Encrypt(data []byte) ([]byte, error) {
-	return Encrypt(pub, data)
+	return EncryptAsn1(pub, data)
 }
 
 var one = new(big.Int).SetInt64(1)
@@ -485,6 +491,69 @@ func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 	}
 	return c, nil
 }
+/*
+sm2加密，返回asn.1编码格式的密文内容
+ */
+func EncryptAsn1(pub *PublicKey, data []byte) ([]byte, error){
+	cipher,err:=Encrypt(pub,data)
+	if err!=nil{
+		return nil, err
+	}
+	return CipherMarshal(cipher)
+}
+/*
+sm2解密，解析asn.1编码格式的密文内容
+*/
+func DecryptAsn1(pub *PrivateKey, data []byte) ([]byte, error){
+	cipher,err:=CipherUnmarshal(data)
+	if err!=nil{
+		return nil, err
+	}
+	return Decrypt(pub, cipher)
+}
+/*
+*sm2密文转asn.1编码格式
+*sm2密文结构如下:
+*  x
+*  y
+*  hash
+*  CipherText
+ */
+func CipherMarshal(data []byte)([]byte,error){
+	data = data[1:]
+	x := new(big.Int).SetBytes(data[:32])
+	y := new(big.Int).SetBytes(data[32:64])
+	hash:=data[64:96]
+	cipherText:=data[96:]
+	return asn1.Marshal(sm2Cipher{x,y,hash,cipherText})
+}
+/*
+sm2密文asn.1编码格式转C1|C3|C2拼接格式
+*/
+func CipherUnmarshal(data []byte)([]byte,error){
+	var cipher sm2Cipher
+	_,err:=asn1.Unmarshal(data,&cipher)
+	if err != nil {
+		return  nil, err
+	}
+	x:=cipher.XCoordinate.Bytes()
+	y:=cipher.YCoordinate.Bytes()
+	hash:=cipher.HASH
+	if err != nil {
+		return  nil, err
+	}
+	cipherText:=cipher.CipherText
+	if err != nil {
+		return  nil, err
+	}
+	c := []byte{}
+	c = append(c, x...) // x分量
+	c = append(c, y...) // y分
+	c = append(c, hash...) // x分量
+	c = append(c, cipherText...) // y分
+	return append([]byte{0x04}, c...), nil
+}
+
 
 // keXHat 计算 x = 2^w + (x & (2^w-1))
 // 密钥协商算法辅助函数
