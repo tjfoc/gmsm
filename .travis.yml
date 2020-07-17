@@ -1,10 +1,15 @@
 sudo: false
+dist: bionic
 language: go
 go:
   - 1.14.x
-
+  - 1.12.x
+before_install:
+  - export GO111MODULE=on
 install:
   - go get -u golang.org/x/lint/golint
+  - export golint=$(go list -f {{.Target}} golang.org/x/lint/golint)
+  - go mod vendor
   - go build -v ./sm2
   - go build -v ./sm3
   - go build -v ./sm4
@@ -13,10 +18,7 @@ script:
   - go vet ./sm2
   - go vet ./sm3
   - go vet ./sm4
-  - $HOME/gopath/bin/golint .
-  - export GOPATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace:$GOPATH"
-  - export PATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace/bin:$PATH"
-  - ls /home/travis/gopath/src/
+  - golint .
   - go test -v ./sm2
   - go test -v ./sm3
   - go test -v ./sm4

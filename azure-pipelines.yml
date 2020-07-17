@@ -1,0 +1,27 @@
+trigger:
+  - master
+
+pool:
+  vmImage: 'ubuntu-18.04'
+
+jobs:
+  - job: install
+    steps:
+      - task: GoTool@0
+        inputs:
+          version: '1.14'
+      - script: go build -v ./sm2
+      - script: go build -v ./sm3
+      - script: go build -v ./sm4
+      - script: go mod vendor
+  - job: test
+    dependsOn: install
+    steps:
+      - script: go vet ./sm2
+      - script: go vet ./sm3
+      - script: go vet ./sm4
+      - script: go get -u golang.org/x/lint/golint; export golint=$(go list -f {{.Target}} golang.org/x/lint/golint); $golint .
+        displayName: golint
+      - script: go test -v ./sm2
+      - script: go test -v ./sm3
+      - script: go test -v ./sm4
