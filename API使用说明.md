@@ -3,7 +3,7 @@
 ## 国密gmsm包安装
 
 ```bash
-go get -u github.com/tjfoc/gmsm
+go get -u github.com/Hyperledger-TWGC/tj-gmsm
 ```
 
 ## SM3密码杂凑算法 - SM3 cryptographic hash algorithm
@@ -12,7 +12,7 @@ go get -u github.com/tjfoc/gmsm
 
 导入包
 ```Go
-import github.com/tjfoc/gmsm/sm3
+import github.com/Hyperledger-TWGC/tj-gmsm/sm3
 ```
 
 ### 代码示例
@@ -44,14 +44,14 @@ func Sum() []byte
 
 导入包
 ```Go
-import github.com/tjfoc/gmsm/sm4
+import github.com/Hyperledger-TWGC/tj-gmsm/sm4
 ```
 
 ### 代码示例
 
 ```Go
     import  "crypto/cipher"
-    import  "github.com/tjfoc/gmsm/sm4"
+    import  "github.com/Hyperledger-TWGC/tj-gmsm/sm4"
 
     func main(){
         // 128比特密钥
@@ -121,7 +121,7 @@ func NewCipher(key []byte) (cipher.Block, error)
 
 导入包
 ```Go
-import github.com/tjfoc/gmsm/sm2
+import github.com/Hyperledger-TWGC/tj-gmsm/sm2
 ```
 
 ### 代码示例

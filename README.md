@@ -3,7 +3,7 @@ GM SM2/3/4 library based on Golang
 
 基于Go语言的国密SM2/SM3/SM4加密算法库
 
-[![Build Status](https://travis-ci.org/tjfoc/gmsm.svg?branch=master)](https://travis-ci.org/tjfoc/gmsm)
+[![Build Status](https://travis-ci.com/Hyperledger-TWGC/gmsm.svg?branch=dev-fabric)](https://travis-ci.com/Hyperledger-TWGC/gmsm)
 
 ## Feature
 GMSM包含以下主要功能
