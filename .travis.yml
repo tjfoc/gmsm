@@ -9,16 +9,29 @@ before_install:
 install:
   - go get -u golang.org/x/lint/golint
   - export golint=$(go list -f {{.Target}} golang.org/x/lint/golint)
+  - go get -v golang.org/x/crypto/chacha20poly1305
+  - go get -v golang.org/x/net/context
+  - go get -v google.golang.org/grpc/credentials
+  - go get -v github.com/golang/protobuf/proto
+  - go get -v golang.org/x/text/secure/bidirule
+  - go get -v google.golang.org/genproto/googleapis/rpc/status
   - go mod vendor
   - go build -v ./sm2
   - go build -v ./sm3
   - go build -v ./sm4
+  - go build -v ./x509
+  - go build -v ./tls/gmcredentials
+  - go build -v ./tls/gmcredentials/echo
 
 script:
   - go vet ./sm2
   - go vet ./sm3
   - go vet ./sm4
+  - go vet ./x509
+  - go vet ./tls/gmcredentials
   - golint .
   - go test -v ./sm2
   - go test -v ./sm3
   - go test -v ./sm4
+  - go test -v ./x509
+  - go test -v ./tls/gmcredentials

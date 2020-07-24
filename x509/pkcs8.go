@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sm2
+package x509
 
 import (
 	"crypto/aes"
@@ -29,6 +29,7 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
+	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
 	"hash"
 	"io/ioutil"
 	"math/big"
@@ -150,7 +151,7 @@ func pbkdf(password, salt []byte, iter, keyLen int, h func() hash.Hash) []byte {
 	return dk[:keyLen]
 }
 
-func ParseSm2PublicKey(der []byte) (*PublicKey, error) {
+func ParseSm2PublicKey(der []byte) (*sm2.PublicKey, error) {
 	var pubkey pkixPublicKey
 
 	if _, err := asn1.Unmarshal(der, &pubkey); err != nil {
@@ -159,9 +160,9 @@ func ParseSm2PublicKey(der []byte) (*PublicKey, error) {
 	if !reflect.DeepEqual(pubkey.Algo.Algorithm, oidSM2) {
 		return nil, errors.New("x509: not sm2 elliptic curve")
 	}
-	curve := P256Sm2()
+	curve := sm2.P256Sm2()
 	x, y := elliptic.Unmarshal(curve, pubkey.BitString.Bytes)
-	pub := PublicKey{
+	pub := sm2.PublicKey{
 		Curve: curve,
 		X:     x,
 		Y:     y,
@@ -169,7 +170,7 @@ func ParseSm2PublicKey(der []byte) (*PublicKey, error) {
 	return &pub, nil
 }
 
-func MarshalSm2PublicKey(key *PublicKey) ([]byte, error) {
+func MarshalSm2PublicKey(key *sm2.PublicKey) ([]byte, error) {
 	var r pkixPublicKey
 	var algo pkix.AlgorithmIdentifier
 
@@ -183,19 +184,19 @@ func MarshalSm2PublicKey(key *PublicKey) ([]byte, error) {
 	return asn1.Marshal(r)
 }
 
-func ParseSm2PrivateKey(der []byte) (*PrivateKey, error) {
+func ParseSm2PrivateKey(der []byte) (*sm2.PrivateKey, error) {
 	var privKey sm2PrivateKey
 
 	if _, err := asn1.Unmarshal(der, &privKey); err != nil {
 		return nil, errors.New("x509: failed to parse SM2 private key: " + err.Error())
 	}
-	curve := P256Sm2()
+	curve := sm2.P256Sm2()
 	k := new(big.Int).SetBytes(privKey.PrivateKey)
 	curveOrder := curve.Params().N
 	if k.Cmp(curveOrder) >= 0 {
 		return nil, errors.New("x509: invalid elliptic curve private key value")
 	}
-	priv := new(PrivateKey)
+	priv := new(sm2.PrivateKey)
 	priv.Curve = curve
 	priv.D = k
 	privateKey := make([]byte, (curveOrder.BitLen()+7)/8)
@@ -210,7 +211,7 @@ func ParseSm2PrivateKey(der []byte) (*PrivateKey, error) {
 	return priv, nil
 }
 
-func ParsePKCS8UnecryptedPrivateKey(der []byte) (*PrivateKey, error) {
+func ParsePKCS8UnecryptedPrivateKey(der []byte) (*sm2.PrivateKey, error) {
 	var privKey pkcs8
 
 	if _, err := asn1.Unmarshal(der, &privKey); err != nil {
@@ -222,7 +223,7 @@ func ParsePKCS8UnecryptedPrivateKey(der []byte) (*PrivateKey, error) {
 	return ParseSm2PrivateKey(privKey.PrivateKey)
 }
 
-func ParsePKCS8EcryptedPrivateKey(der, pwd []byte) (*PrivateKey, error) {
+func ParsePKCS8EcryptedPrivateKey(der, pwd []byte) (*sm2.PrivateKey, error) {
 	var keyInfo EncryptedPrivateKeyInfo
 
 	_, err := asn1.Unmarshal(der, &keyInfo)
@@ -276,14 +277,14 @@ func ParsePKCS8EcryptedPrivateKey(der, pwd []byte) (*PrivateKey, error) {
 	return rKey, nil
 }
 
-func ParsePKCS8PrivateKey(der, pwd []byte) (*PrivateKey, error) {
+func ParsePKCS8PrivateKey(der, pwd []byte) (*sm2.PrivateKey, error) {
 	if pwd == nil {
 		return ParsePKCS8UnecryptedPrivateKey(der)
 	}
 	return ParsePKCS8EcryptedPrivateKey(der, pwd)
 }
 
-func MarshalSm2UnecryptedPrivateKey(key *PrivateKey) ([]byte, error) {
+func MarshalSm2UnecryptedPrivateKey(key *sm2.PrivateKey) ([]byte, error) {
 	var r pkcs8
 	var priv sm2PrivateKey
 	var algo pkix.AlgorithmIdentifier
@@ -303,7 +304,7 @@ func MarshalSm2UnecryptedPrivateKey(key *PrivateKey) ([]byte, error) {
 	return asn1.Marshal(r)
 }
 
-func MarshalSm2EcryptedPrivateKey(PrivKey *PrivateKey, pwd []byte) ([]byte, error) {
+func MarshalSm2EcryptedPrivateKey(PrivKey *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	der, err := MarshalSm2UnecryptedPrivateKey(PrivKey)
 	if err != nil {
 		return nil, err
@@ -360,14 +361,14 @@ func MarshalSm2EcryptedPrivateKey(PrivKey *PrivateKey, pwd []byte) ([]byte, erro
 	return asn1.Marshal(encryptedPkey)
 }
 
-func MarshalSm2PrivateKey(key *PrivateKey, pwd []byte) ([]byte, error) {
+func MarshalSm2PrivateKey(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	if pwd == nil {
 		return MarshalSm2UnecryptedPrivateKey(key)
 	}
 	return MarshalSm2EcryptedPrivateKey(key, pwd)
 }
 
-func ReadPrivateKeyFromMem(data []byte, pwd []byte) (*PrivateKey, error) {
+func ReadPrivateKeyFromMem(data []byte, pwd []byte) (*sm2.PrivateKey, error) {
 	var block *pem.Block
 
 	block, _ = pem.Decode(data)
@@ -378,7 +379,7 @@ func ReadPrivateKeyFromMem(data []byte, pwd []byte) (*PrivateKey, error) {
 	return priv, err
 }
 
-func ReadPrivateKeyFromPem(FileName string, pwd []byte) (*PrivateKey, error) {
+func ReadPrivateKeyFromPem(FileName string, pwd []byte) (*sm2.PrivateKey, error) {
 	data, err := ioutil.ReadFile(FileName)
 	if err != nil {
 		return nil, err
@@ -386,7 +387,7 @@ func ReadPrivateKeyFromPem(FileName string, pwd []byte) (*PrivateKey, error) {
 	return ReadPrivateKeyFromMem(data, pwd)
 }
 
-func WritePrivateKeytoMem(key *PrivateKey, pwd []byte) ([]byte, error) {
+func WritePrivateKeytoMem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	var block *pem.Block
 
 	der, err := MarshalSm2PrivateKey(key, pwd)
@@ -407,7 +408,7 @@ func WritePrivateKeytoMem(key *PrivateKey, pwd []byte) ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-func WritePrivateKeytoPem(FileName string, key *PrivateKey, pwd []byte) (bool, error) {
+func WritePrivateKeytoPem(FileName string, key *sm2.PrivateKey, pwd []byte) (bool, error) {
 	var block *pem.Block
 
 	der, err := MarshalSm2PrivateKey(key, pwd)
@@ -437,7 +438,7 @@ func WritePrivateKeytoPem(FileName string, key *PrivateKey, pwd []byte) (bool, e
 	return true, nil
 }
 
-func ReadPublicKeyFromMem(data []byte, _ []byte) (*PublicKey, error) {
+func ReadPublicKeyFromMem(data []byte, _ []byte) (*sm2.PublicKey, error) {
 	block, _ := pem.Decode(data)
 	if block == nil || block.Type != "PUBLIC KEY" {
 		return nil, errors.New("failed to decode public key")
@@ -446,7 +447,7 @@ func ReadPublicKeyFromMem(data []byte, _ []byte) (*PublicKey, error) {
 	return pub, err
 }
 
-func ReadPublicKeyFromPem(FileName string, pwd []byte) (*PublicKey, error) {
+func ReadPublicKeyFromPem(FileName string, pwd []byte) (*sm2.PublicKey, error) {
 	data, err := ioutil.ReadFile(FileName)
 	if err != nil {
 		return nil, err
@@ -454,7 +455,7 @@ func ReadPublicKeyFromPem(FileName string, pwd []byte) (*PublicKey, error) {
 	return ReadPublicKeyFromMem(data, pwd)
 }
 
-func WritePublicKeytoMem(key *PublicKey, _ []byte) ([]byte, error) {
+func WritePublicKeytoMem(key *sm2.PublicKey, _ []byte) ([]byte, error) {
 	der, err := MarshalSm2PublicKey(key)
 	if err != nil {
 		return nil, err
@@ -466,7 +467,7 @@ func WritePublicKeytoMem(key *PublicKey, _ []byte) ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-func WritePublicKeytoPem(FileName string, key *PublicKey, _ []byte) (bool, error) {
+func WritePublicKeytoPem(FileName string, key *sm2.PublicKey, _ []byte) (bool, error) {
 	der, err := MarshalSm2PublicKey(key)
 	if err != nil {
 		return false, err

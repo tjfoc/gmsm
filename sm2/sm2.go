@@ -27,10 +27,9 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"errors"
+	"github.com/Hyperledger-TWGC/tj-gmsm/sm3"
 	"io"
 	"math/big"
-
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm3"
 )
 
 var (
@@ -57,8 +56,8 @@ type sm2Signature struct {
 type sm2Cipher struct {
 	XCoordinate *big.Int
 	YCoordinate *big.Int
-	HASH []byte
-	CipherText []byte
+	HASH        []byte
+	CipherText  []byte
 }
 
 // The SM2's private key contains the public key
@@ -274,7 +273,7 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 
 func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
 	if len(uid) == 0 {
-		uid=default_uid
+		uid = default_uid
 	}
 	za, err := ZA(&priv.PublicKey, uid)
 	if err != nil {
@@ -331,7 +330,7 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 		return false
 	}
 	if len(uid) == 0 {
-		uid=default_uid
+		uid = default_uid
 	}
 	za, err := ZA(pub, uid)
 	if err != nil {
@@ -491,26 +490,29 @@ func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 	}
 	return c, nil
 }
+
 /*
 sm2加密，返回asn.1编码格式的密文内容
- */
-func EncryptAsn1(pub *PublicKey, data []byte) ([]byte, error){
-	cipher,err:=Encrypt(pub,data)
-	if err!=nil{
+*/
+func EncryptAsn1(pub *PublicKey, data []byte) ([]byte, error) {
+	cipher, err := Encrypt(pub, data)
+	if err != nil {
 		return nil, err
 	}
 	return CipherMarshal(cipher)
 }
+
 /*
 sm2解密，解析asn.1编码格式的密文内容
 */
-func DecryptAsn1(pub *PrivateKey, data []byte) ([]byte, error){
-	cipher,err:=CipherUnmarshal(data)
-	if err!=nil{
+func DecryptAsn1(pub *PrivateKey, data []byte) ([]byte, error) {
+	cipher, err := CipherUnmarshal(data)
+	if err != nil {
 		return nil, err
 	}
 	return Decrypt(pub, cipher)
 }
+
 /*
 *sm2密文转asn.1编码格式
 *sm2密文结构如下:
@@ -519,41 +521,41 @@ func DecryptAsn1(pub *PrivateKey, data []byte) ([]byte, error){
 *  hash
 *  CipherText
  */
-func CipherMarshal(data []byte)([]byte,error){
+func CipherMarshal(data []byte) ([]byte, error) {
 	data = data[1:]
 	x := new(big.Int).SetBytes(data[:32])
 	y := new(big.Int).SetBytes(data[32:64])
-	hash:=data[64:96]
-	cipherText:=data[96:]
-	return asn1.Marshal(sm2Cipher{x,y,hash,cipherText})
+	hash := data[64:96]
+	cipherText := data[96:]
+	return asn1.Marshal(sm2Cipher{x, y, hash, cipherText})
 }
+
 /*
 sm2密文asn.1编码格式转C1|C3|C2拼接格式
 */
-func CipherUnmarshal(data []byte)([]byte,error){
+func CipherUnmarshal(data []byte) ([]byte, error) {
 	var cipher sm2Cipher
-	_,err:=asn1.Unmarshal(data,&cipher)
+	_, err := asn1.Unmarshal(data, &cipher)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
-	x:=cipher.XCoordinate.Bytes()
-	y:=cipher.YCoordinate.Bytes()
-	hash:=cipher.HASH
+	x := cipher.XCoordinate.Bytes()
+	y := cipher.YCoordinate.Bytes()
+	hash := cipher.HASH
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
-	cipherText:=cipher.CipherText
+	cipherText := cipher.CipherText
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 	c := []byte{}
-	c = append(c, x...) // x分量
-	c = append(c, y...) // y分
-	c = append(c, hash...) // x分量
+	c = append(c, x...)          // x分量
+	c = append(c, y...)          // y分
+	c = append(c, hash...)       // x分量
 	c = append(c, cipherText...) // y分
 	return append([]byte{0x04}, c...), nil
 }
-
 
 // keXHat 计算 x = 2^w + (x & (2^w-1))
 // 密钥协商算法辅助函数
@@ -585,7 +587,7 @@ func keXHat(x *big.Int) (xul *big.Int) {
 // thisIsA: 如果是A调用，文档中的协商第三步，设置为true，否则设置为false
 //
 // 返回 k 为klen长度的字节串
-func keyExchange(klen int, ida, idb []byte, pri *PrivateKey, pub *PublicKey,rpri *PrivateKey, rpub *PublicKey, thisISA bool) (k,s1,s2 []byte, err error) {
+func keyExchange(klen int, ida, idb []byte, pri *PrivateKey, pub *PublicKey, rpri *PrivateKey, rpub *PublicKey, thisISA bool) (k, s1, s2 []byte, err error) {
 	curve := P256Sm2()
 	N := curve.Params().N
 	x2hat := keXHat(rpri.PublicKey.X)
@@ -623,16 +625,16 @@ func keyExchange(klen int, ida, idb []byte, pri *PrivateKey, pub *PublicKey,rpri
 		err = errors.New("kdf: zero key")
 		return
 	}
-	h1:=BytesCombine(vx.Bytes(),za,zb,rpub.X.Bytes(),rpub.Y.Bytes(),rpri.X.Bytes(),rpri.Y.Bytes())
+	h1 := BytesCombine(vx.Bytes(), za, zb, rpub.X.Bytes(), rpub.Y.Bytes(), rpri.X.Bytes(), rpri.Y.Bytes())
 	if !thisISA {
-		h1 =BytesCombine(vx.Bytes(),za,zb,rpri.X.Bytes(),rpri.Y.Bytes(),rpub.X.Bytes(),rpub.Y.Bytes())
+		h1 = BytesCombine(vx.Bytes(), za, zb, rpri.X.Bytes(), rpri.Y.Bytes(), rpub.X.Bytes(), rpub.Y.Bytes())
 	}
-    hash:=sm3.Sm3Sum(h1)
-	h2:=BytesCombine([]byte{0x02},vy.Bytes(),hash)
-	S1:=sm3.Sm3Sum(h2)
-	h3:=BytesCombine([]byte{0x03},vy.Bytes(),hash)
-	S2:=sm3.Sm3Sum(h3)
-	return k, S1,S2,nil
+	hash := sm3.Sm3Sum(h1)
+	h2 := BytesCombine([]byte{0x02}, vy.Bytes(), hash)
+	S1 := sm3.Sm3Sum(h2)
+	h3 := BytesCombine([]byte{0x03}, vy.Bytes(), hash)
+	S2 := sm3.Sm3Sum(h3)
+	return k, S1, S2, nil
 }
 func BytesCombine(pBytes ...[]byte) []byte {
 	len := len(pBytes)
@@ -643,14 +645,15 @@ func BytesCombine(pBytes ...[]byte) []byte {
 	sep := []byte("")
 	return bytes.Join(s, sep)
 }
+
 // KeyExchangeB 协商第二部，用户B调用， 返回共享密钥k
-func KeyExchangeB(klen int, ida, idb []byte, priB *PrivateKey, pubA *PublicKey,rpri *PrivateKey, rpubA *PublicKey) (k,s1,s2[]byte, err error) {
-	return keyExchange(klen, ida, idb, priB, pubA,rpri, rpubA, false)
+func KeyExchangeB(klen int, ida, idb []byte, priB *PrivateKey, pubA *PublicKey, rpri *PrivateKey, rpubA *PublicKey) (k, s1, s2 []byte, err error) {
+	return keyExchange(klen, ida, idb, priB, pubA, rpri, rpubA, false)
 }
 
 // KeyExchangeA 协商第二部，用户A调用，返回共享密钥k
-func KeyExchangeA(klen int, ida, idb []byte, priA *PrivateKey, pubB *PublicKey,rpri *PrivateKey, rpubB *PublicKey) (k,s1,s2[]byte, err error) {
-	return keyExchange(klen, ida, idb, priA, pubB,rpri, rpubB, true)
+func KeyExchangeA(klen int, ida, idb []byte, priA *PrivateKey, pubB *PublicKey, rpri *PrivateKey, rpubB *PublicKey) (k, s1, s2 []byte, err error) {
+	return keyExchange(klen, ida, idb, priA, pubB, rpri, rpubB, true)
 }
 
 type zr struct {
@@ -677,7 +680,7 @@ func Compress(a *PublicKey) []byte {
 	if n := len(a.X.Bytes()); n < 32 {
 		buf = append(zeroByteSlice()[:(32-n)], buf...)
 	}
-	buf = append([]byte{byte(yp+2)}, buf...)
+	buf = append([]byte{byte(yp + 2)}, buf...)
 	return buf
 }
 
@@ -696,7 +699,7 @@ func Decompress(a []byte) *PublicKey {
 
 	y2 := sm2P256ToBig(&xx3)
 	y := new(big.Int).ModSqrt(y2, sm2P256.P)
-	if getLastBit(y)+2!= uint(a[0]) {
+	if getLastBit(y)+2 != uint(a[0]) {
 		y.Sub(sm2P256.P, y)
 	}
 	return &PublicKey{

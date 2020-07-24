@@ -14,7 +14,7 @@ limitations under the License.
 */
 
 // crypto/x509 add sm2 support
-package sm2
+package x509
 
 import (
 	"bytes"
@@ -33,6 +33,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -106,7 +107,7 @@ func marshalPublicKey(pub interface{}) (publicKeyBytes []byte, publicKeyAlgorith
 			return
 		}
 		publicKeyAlgorithm.Parameters.FullBytes = paramBytes
-	case *PublicKey:
+	case *sm2.PublicKey:
 		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
 		oid, ok := oidFromNamedCurve(pub.Curve)
 		if !ok {
@@ -662,7 +663,7 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 	case oid.Equal(oidNamedCurveP521):
 		return elliptic.P521()
 	case oid.Equal(oidNamedCurveP256SM2):
-		return P256Sm2()
+		return sm2.P256Sm2()
 	}
 	return nil
 }
@@ -677,7 +678,7 @@ func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
 		return oidNamedCurveP384, true
 	case elliptic.P521():
 		return oidNamedCurveP521, true
-	case P256Sm2():
+	case sm2.P256Sm2():
 		return oidNamedCurveP256SM2, true
 	}
 	return nil, false
@@ -1027,13 +1028,13 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 			return errors.New("x509: ECDSA signature contained zero or negative values")
 		}
 		switch pub.Curve {
-		case P256Sm2():
-			sm2pub := &PublicKey{
+		case sm2.P256Sm2():
+			sm2pub := &sm2.PublicKey{
 				Curve: pub.Curve,
 				X:     pub.X,
 				Y:     pub.Y,
 			}
-			if !Sm2Verify(sm2pub, signed, nil, ecdsaSig.R, ecdsaSig.S) {
+			if !sm2.Sm2Verify(sm2pub, signed, nil, ecdsaSig.R, ecdsaSig.S) {
 				return errors.New("x509: SM2 verification failure")
 			}
 		default:
@@ -1838,10 +1839,10 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 		default:
 			err = errors.New("x509: unknown elliptic curve")
 		}
-	case *PublicKey:
+	case *sm2.PublicKey:
 		pubType = ECDSA
 		switch pub.Curve {
-		case P256Sm2():
+		case sm2.P256Sm2():
 			hashFunc = SM3
 			sigAlgo.Algorithm = oidSignatureSM2WithSM3
 		default:
@@ -2353,7 +2354,7 @@ func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, priv
 
 	digest := tbsCSRContents
 	switch template.SignatureAlgorithm {
-	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256,UnknownSignatureAlgorithm:
+	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256, UnknownSignatureAlgorithm:
 		break
 	default:
 		h := hashFunc.New()
@@ -2394,7 +2395,7 @@ func ParseCertificateRequest(asn1Data []byte) (*CertificateRequest, error) {
 
 func parseCertificateRequest(in *certificateRequest) (*CertificateRequest, error) {
 	out := &CertificateRequest{
-		Raw: in.Raw,
+		Raw:                      in.Raw,
 		RawTBSCertificateRequest: in.TBSCSR.Raw,
 		RawSubjectPublicKeyInfo:  in.TBSCSR.PublicKey.Raw,
 		RawSubject:               in.TBSCSR.Subject.FullBytes,
@@ -2460,7 +2461,7 @@ func ReadCertificateRequestFromPem(FileName string) (*CertificateRequest, error)
 	return ReadCertificateRequestFromMem(data)
 }
 
-func CreateCertificateRequestToMem(template *CertificateRequest, privKey *PrivateKey) ([]byte, error) {
+func CreateCertificateRequestToMem(template *CertificateRequest, privKey *sm2.PrivateKey) ([]byte, error) {
 	der, err := CreateCertificateRequest(rand.Reader, template, privKey)
 	if err != nil {
 		return nil, err
@@ -2473,7 +2474,7 @@ func CreateCertificateRequestToMem(template *CertificateRequest, privKey *Privat
 }
 
 func CreateCertificateRequestToPem(FileName string, template *CertificateRequest,
-	privKey *PrivateKey) (bool, error) {
+	privKey *sm2.PrivateKey) (bool, error) {
 	der, err := CreateCertificateRequest(rand.Reader, template, privKey)
 	if err != nil {
 		return false, err
@@ -2510,7 +2511,7 @@ func ReadCertificateFromPem(FileName string) (*Certificate, error) {
 	return ReadCertificateFromMem(data)
 }
 
-func CreateCertificateToMem(template, parent *Certificate, pubKey *PublicKey, privKey *PrivateKey) ([]byte, error) {
+func CreateCertificateToMem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
 	der, err := CreateCertificate(rand.Reader, template, parent, pubKey, privKey)
 	if err != nil {
 		return nil, err
@@ -2522,7 +2523,7 @@ func CreateCertificateToMem(template, parent *Certificate, pubKey *PublicKey, pr
 	return pem.EncodeToMemory(block), nil
 }
 
-func CreateCertificateToPem(FileName string, template, parent *Certificate, pubKey *PublicKey, privKey *PrivateKey) (bool, error) {
+func CreateCertificateToPem(FileName string, template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) (bool, error) {
 	der, err := CreateCertificate(rand.Reader, template, parent, pubKey, privKey)
 	if err != nil {
 		return false, err
