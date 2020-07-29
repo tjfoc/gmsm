@@ -17,7 +17,6 @@ package sm4
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"testing"
 )
@@ -26,16 +25,19 @@ func TestSM4(t *testing.T) {
 	key := []byte("1234567890abcdef")
 	fmt.Printf("key = %v\n", key)
 	data := []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10}
-	WriteKeyToPem("key.pem", key, nil)
-	key, err := ReadKeyFromPem("key.pem", nil)
+	err := WriteKeyToPem("key.pem", key, nil)
+	if err != nil {
+		t.Fatalf("WriteKeyToPem error")
+	}
+	key, err = ReadKeyFromPem("key.pem", nil)
 	fmt.Printf("key = %v\n", key)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	fmt.Printf("data = %x\n", data)
 	c, err := NewCipher(key)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	d0 := make([]byte, 16)
 	c.Encrypt(d0, data)
@@ -52,14 +54,17 @@ func BenchmarkSM4(t *testing.B) {
 	t.ReportAllocs()
 	key := []byte("1234567890abcdef")
 	data := []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10}
-	WriteKeyToPem("key.pem", key, nil)
-	key, err := ReadKeyFromPem("key.pem", nil)
+	err := WriteKeyToPem("key.pem", key, nil)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatalf("WriteKeyToPem error")
+	}
+	key, err = ReadKeyFromPem("key.pem", nil)
+	if err != nil {
+		t.Fatal(err)
 	}
 	c, err := NewCipher(key)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	for i := 0; i < t.N; i++ {

@@ -25,15 +25,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
-	"os"
 	"strconv"
 )
 
 const BlockSize = 16
 
 type SM4Key []byte
-
-type KeySizeError int
 
 // Cipher is an instance of SM4 encryption.
 type Sm4Cipher struct {
@@ -293,42 +290,22 @@ func WriteKeytoMem(key SM4Key, pwd []byte) ([]byte, error) {
 	}
 }
 
-func WriteKeyToPem(FileName string, key SM4Key, pwd []byte) (bool, error) {
-	var block *pem.Block
-
-	if pwd != nil {
-		var err error
-		block, err = x509.EncryptPEMBlock(rand.Reader,
-			"SM4 ENCRYPTED KEY", key, pwd, x509.PEMCipherAES256)
-		if err != nil {
-			return false, err
-		}
-	} else {
-		block = &pem.Block{
-			Type:  "SM4 KEY",
-			Bytes: key,
-		}
-	}
-	file, err := os.Create(FileName)
+func WriteKeyToPem(FileName string, key SM4Key, pwd []byte) error {
+	pemBytes, err := WriteKeytoMem(key, pwd)
 	if err != nil {
-		return false, err
+		return err
 	}
-	defer file.Close()
-	err = pem.Encode(file, block)
+	err = ioutil.WriteFile(FileName, pemBytes, 0666)
 	if err != nil {
-		return false, nil
+		return err
 	}
-	return true, nil
-}
-
-func (k KeySizeError) Error() string {
-	return "SM4: invalid key size " + strconv.Itoa(int(k))
+	return nil
 }
 
 // NewCipher creates and returns a new cipher.Block.
 func NewCipher(key []byte) (cipher.Block, error) {
 	if len(key) != BlockSize {
-		return nil, KeySizeError(len(key))
+		return nil, errors.New("SM4: invalid key size " + strconv.Itoa(len(key)))
 	}
 	c := new(Sm4Cipher)
 	c.subkeys = generateSubKeys(key)

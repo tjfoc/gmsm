@@ -408,37 +408,27 @@ func WritePrivateKeytoMem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-func WritePrivateKeytoPem(FileName string, key *sm2.PrivateKey, pwd []byte) (bool, error) {
-	var block *pem.Block
-
-	der, err := MarshalSm2PrivateKey(key, pwd)
+func WritePrivateKeytoPem(FileName string, key *sm2.PrivateKey, pwd []byte) (err error) {
+	certPem, err := WritePrivateKeytoMem(key, pwd)
 	if err != nil {
-		return false, err
+		return err
 	}
-	if pwd != nil {
-		block = &pem.Block{
-			Type:  "ENCRYPTED PRIVATE KEY",
-			Bytes: der,
-		}
-	} else {
-		block = &pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: der,
-		}
-	}
+
 	file, err := os.Create(FileName)
 	if err != nil {
-		return false, err
+		return err
 	}
-	defer file.Close()
-	err = pem.Encode(file, block)
+	defer func() {
+		err = file.Close()
+	}()
+	_, err = file.Write(certPem)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
-func ReadPublicKeyFromMem(data []byte, _ []byte) (*sm2.PublicKey, error) {
+func ReadPublicKeyFromMem(data []byte) (*sm2.PublicKey, error) {
 	block, _ := pem.Decode(data)
 	if block == nil || block.Type != "PUBLIC KEY" {
 		return nil, errors.New("failed to decode public key")
@@ -447,15 +437,15 @@ func ReadPublicKeyFromMem(data []byte, _ []byte) (*sm2.PublicKey, error) {
 	return pub, err
 }
 
-func ReadPublicKeyFromPem(FileName string, pwd []byte) (*sm2.PublicKey, error) {
+func ReadPublicKeyFromPem(FileName string) (*sm2.PublicKey, error) {
 	data, err := ioutil.ReadFile(FileName)
 	if err != nil {
 		return nil, err
 	}
-	return ReadPublicKeyFromMem(data, pwd)
+	return ReadPublicKeyFromMem(data)
 }
 
-func WritePublicKeytoMem(key *sm2.PublicKey, _ []byte) ([]byte, error) {
+func WritePublicKeytoMem(key *sm2.PublicKey) ([]byte, error) {
 	der, err := MarshalSm2PublicKey(key)
 	if err != nil {
 		return nil, err
@@ -467,23 +457,22 @@ func WritePublicKeytoMem(key *sm2.PublicKey, _ []byte) ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-func WritePublicKeytoPem(FileName string, key *sm2.PublicKey, _ []byte) (bool, error) {
-	der, err := MarshalSm2PublicKey(key)
+func WritePublicKeytoPem(FileName string, key *sm2.PublicKey) (err error) {
+	certPem, err := WritePublicKeytoMem(key)
 	if err != nil {
-		return false, err
+		return err
 	}
-	block := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: der,
-	}
+
 	file, err := os.Create(FileName)
-	defer file.Close()
+	defer func() {
+		err = file.Close()
+	}()
 	if err != nil {
-		return false, err
+		return err
 	}
-	err = pem.Encode(file, block)
+	_, err = file.Write(certPem)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }

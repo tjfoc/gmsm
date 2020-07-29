@@ -1,20 +1,18 @@
 sudo: false
 dist: bionic
 language: go
+os:
+  - linux
+  - osx
+osx_image: xcode11
 go:
   - 1.14.x
-  - 1.12.x
+  - 1.13.x
 before_install:
   - export GO111MODULE=on
 install:
   - go get -u golang.org/x/lint/golint
   - export golint=$(go list -f {{.Target}} golang.org/x/lint/golint)
-  - go get -v golang.org/x/crypto/chacha20poly1305
-  - go get -v golang.org/x/net/context
-  - go get -v google.golang.org/grpc/credentials
-  - go get -v github.com/golang/protobuf/proto
-  - go get -v golang.org/x/text/secure/bidirule
-  - go get -v google.golang.org/genproto/googleapis/rpc/status
   - go mod vendor
   - go build -v ./sm2
   - go build -v ./sm3

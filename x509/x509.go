@@ -1887,7 +1887,7 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 	return
 }
 
-// CreateCertificate creates a new certificate based on a template. The
+// CreateCertificateToMem creates a new certificate based on a template. The
 // following members of template are used: SerialNumber, Subject, NotBefore,
 // NotAfter, KeyUsage, ExtKeyUsage, UnknownExtKeyUsage, BasicConstraintsValid,
 // IsCA, MaxPathLen, SubjectKeyId, DNSNames, PermittedDNSDomainsCritical,
@@ -1895,23 +1895,19 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 //
 // The certificate is signed by parent. If parent is equal to template then the
 // certificate is self-signed. The parameter pub is the public key of the
-// signee and priv is the private key of the signer.
+// signer and priv is the private key of the signer.
 //
-// The returned slice is the certificate in DER encoding.
+// The returned slice is the certificate in PEM encoding.
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PublicKey and *ecdsa.PublicKey.)
-func CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv interface{}) (cert []byte, err error) {
-	key, ok := priv.(crypto.Signer)
-	if !ok {
-		return nil, errors.New("x509: certificate private key does not implement crypto.Signer")
-	}
+func CreateCertificateToMem(rand io.Reader, template, parent *Certificate, pub interface{}, priv crypto.Signer) (cert []byte, err error) {
 
 	if template.SerialNumber == nil {
 		return nil, errors.New("x509: no SerialNumber given")
 	}
 
-	hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(key.Public(), template.SignatureAlgorithm)
+	hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(priv.Public(), template.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -1978,16 +1974,26 @@ func CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv 
 	}
 
 	var signature []byte
-	signature, err = key.Sign(rand, digest, signerOpts)
+	signature, err = priv.Sign(rand, digest, signerOpts)
 	if err != nil {
 		return
 	}
-	return asn1.Marshal(certificate{
+	der, err := asn1.Marshal(certificate{
 		nil,
 		c,
 		signatureAlgorithm,
 		asn1.BitString{Bytes: signature, BitLength: len(signature) * 8},
 	})
+
+	if err != nil {
+		return nil, err
+	}
+	block := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: der,
+	}
+	return pem.EncodeToMemory(block), nil
+
 }
 
 // pemCRLPrefix is the magic string that indicates that we have a PEM encoded
@@ -2473,11 +2479,10 @@ func CreateCertificateRequestToMem(template *CertificateRequest, privKey *sm2.Pr
 	return pem.EncodeToMemory(block), nil
 }
 
-func CreateCertificateRequestToPem(FileName string, template *CertificateRequest,
-	privKey *sm2.PrivateKey) (bool, error) {
+func CreateCertificateRequestToPem(FileName string, template *CertificateRequest, privKey *sm2.PrivateKey) error {
 	der, err := CreateCertificateRequest(rand.Reader, template, privKey)
 	if err != nil {
-		return false, err
+		return err
 	}
 	block := &pem.Block{
 		Type:  "CERTIFICATE REQUEST",
@@ -2485,14 +2490,16 @@ func CreateCertificateRequestToPem(FileName string, template *CertificateRequest
 	}
 	file, err := os.Create(FileName)
 	if err != nil {
-		return false, err
+		return err
 	}
-	defer file.Close()
+	defer func() {
+		err = file.Close()
+	}()
 	err = pem.Encode(file, block)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 func ReadCertificateFromMem(data []byte) (*Certificate, error) {
@@ -2511,35 +2518,22 @@ func ReadCertificateFromPem(FileName string) (*Certificate, error) {
 	return ReadCertificateFromMem(data)
 }
 
-func CreateCertificateToMem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
-	der, err := CreateCertificate(rand.Reader, template, parent, pubKey, privKey)
+func CreateCertificateToPem(FileName string, template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) error {
+	certPem, err := CreateCertificateToMem(rand.Reader, template, parent, pubKey, privKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	block := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: der,
-	}
-	return pem.EncodeToMemory(block), nil
-}
 
-func CreateCertificateToPem(FileName string, template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) (bool, error) {
-	der, err := CreateCertificate(rand.Reader, template, parent, pubKey, privKey)
-	if err != nil {
-		return false, err
-	}
-	block := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: der,
-	}
 	file, err := os.Create(FileName)
 	if err != nil {
-		return false, err
+		return err
 	}
-	defer file.Close()
-	err = pem.Encode(file, block)
+	defer func() {
+		err = file.Close()
+	}()
+	_, err = file.Write(certPem)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }

@@ -22,7 +22,6 @@ import (
 	"encoding/asn1"
 	"fmt"
 	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
-	"log"
 	"math/big"
 	"testing"
 	"time"
@@ -31,24 +30,24 @@ import (
 func TestX509(t *testing.T) {
 	priv, err := sm2.GenerateKey() // 生成密钥对
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	ok, err := WritePrivateKeytoPem("priv.pem", priv, nil) // 生成密钥文件
-	if ok != true {
-		log.Fatal(err)
+	err = WritePrivateKeytoPem("priv.pem", priv, nil) // 生成密钥文件
+	if err != nil {
+		t.Fatal(err)
 	}
 	pubKey, _ := priv.Public().(*sm2.PublicKey)
-	ok, err = WritePublicKeytoPem("pub.pem", pubKey, nil) // 生成公钥文件
-	if ok != true {
-		log.Fatal(err)
+	err = WritePublicKeytoPem("pub.pem", pubKey) // 生成公钥文件
+	if err != nil {
+		t.Fatal(err)
 	}
 	privKey, err := ReadPrivateKeyFromPem("priv.pem", nil) // 读取密钥
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	pubKey, err = ReadPublicKeyFromPem("pub.pem", nil) // 读取公钥
+	pubKey, err = ReadPublicKeyFromPem("pub.pem") // 读取公钥
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	templateReq := CertificateRequest{
 		Subject: pkix.Name{
@@ -58,17 +57,17 @@ func TestX509(t *testing.T) {
 		//		SignatureAlgorithm: ECDSAWithSHA256,
 		SignatureAlgorithm: SM2WithSM3,
 	}
-	_, err = CreateCertificateRequestToPem("req.pem", &templateReq, privKey)
+	err = CreateCertificateRequestToPem("req.pem", &templateReq, privKey)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	req, err := ReadCertificateRequestFromPem("req.pem")
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	err = req.CheckSignature()
 	if err != nil {
-		log.Fatalf("Request CheckSignature error:%v", err)
+		t.Fatalf("Request CheckSignature error:%v", err)
 	} else {
 		fmt.Printf("CheckSignature ok\n")
 	}
@@ -139,17 +138,17 @@ func TestX509(t *testing.T) {
 		},
 	}
 	pubKey, _ = priv.Public().(*sm2.PublicKey)
-	ok, _ = CreateCertificateToPem("cert.pem", &template, &template, pubKey, privKey)
-	if ok != true {
-		fmt.Printf("failed to create cert file\n")
+	err = CreateCertificateToPem("cert.pem", &template, &template, pubKey, privKey)
+	if err != nil {
+		t.Fatal("failed to create cert file")
 	}
 	cert, err := ReadCertificateFromPem("cert.pem")
 	if err != nil {
-		fmt.Printf("failed to read cert file")
+		t.Fatal("failed to read cert file")
 	}
 	err = cert.CheckSignature(cert.SignatureAlgorithm, cert.RawTBSCertificate, cert.Signature)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	} else {
 		fmt.Printf("CheckSignature ok\n")
 	}

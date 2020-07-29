@@ -20,7 +20,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"os"
 	"testing"
@@ -29,7 +28,7 @@ import (
 func TestSm2(t *testing.T) {
 	priv, err := GenerateKey() // 生成密钥对
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	fmt.Printf("%v\n", priv.Curve.IsOnCurve(priv.X, priv.Y)) // 验证是否为sm2的曲线
 	pub := &priv.PublicKey
@@ -49,11 +48,11 @@ func TestSm2(t *testing.T) {
 	msg, _ = ioutil.ReadFile("ifile")             // 从文件读取数据
 	sign, err := priv.Sign(rand.Reader, msg, nil) // 签名
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	err = ioutil.WriteFile("ofile", sign, os.FileMode(0644))
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	signdata, _ := ioutil.ReadFile("ofile")
 	ok := priv.Verify(msg, signdata) // 密钥验证
@@ -77,13 +76,13 @@ func BenchmarkSM2(t *testing.B) {
 	msg := []byte("test")
 	priv, err := GenerateKey() // 生成密钥对
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sign, err := priv.Sign(rand.Reader, msg, nil) // 签名
 		if err != nil {
-			log.Fatal(err)
+			t.Fatal(err)
 		}
 		priv.Verify(msg, sign) // 密钥验证
 		// if ok != true {

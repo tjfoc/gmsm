@@ -7,13 +7,9 @@ go get -u github.com/Hyperledger-TWGC/tj-gmsm
 ```
 
 ## SM3密码杂凑算法 - SM3 cryptographic hash algorithm
-
-遵循的SM3标准号为： GM/T 0004-2012
-
-导入包
-```Go
-import github.com/Hyperledger-TWGC/tj-gmsm/sm3
-```
+- 遵循的SM3标准号为： GM/T 0004-2012
+- g package：`github.com/Hyperledger-TWGC/tj-gmsm/sm3`
+- `type SM3 struct` 是原生接口hash.Hash的一个实现
 
 ### 代码示例
 
@@ -24,28 +20,11 @@ import github.com/Hyperledger-TWGC/tj-gmsm/sm3
     sum := h.Sum(nil)
     fmt.Printf("digest value is: %x\n",sum)
 ```
-### 方法列表
-
-####  New 
-创建哈希计算实例
-```Go
-func New() hash.Hash 
-```
-
-#### Sum 
-返回SM3哈希算法摘要值
-```Go
-func Sum() []byte 
-```
 
 ## SM4分组密码算法 - SM4 block cipher algorithm
 
-遵循的SM4标准号为:  GM/T 0002-2012
-
-导入包
-```Go
-import github.com/Hyperledger-TWGC/tj-gmsm/sm4
-```
+- 遵循的SM4标准号为:  GM/T 0002-2012
+- go package：`github.com/Hyperledger-TWGC/tj-gmsm/sm4`
 
 ### 代码示例
 
@@ -117,12 +96,8 @@ func NewCipher(key []byte) (cipher.Block, error)
 
 ## SM2椭圆曲线公钥密码算法 - Public key cryptographic algorithm SM2 based on elliptic curves
 
-遵循的SM2标准号为： GM/T 0003.1-2012、GM/T 0003.2-2012、GM/T 0003.3-2012、GM/T 0003.4-2012、GM/T 0003.5-2012、GM/T 0009-2012、GM/T 0010-2012
-
-导入包
-```Go
-import github.com/Hyperledger-TWGC/tj-gmsm/sm2
-```
+- 遵循的SM2标准号为： GM/T 0003.1-2012、GM/T 0003.2-2012、GM/T 0003.3-2012、GM/T 0003.4-2012、GM/T 0003.5-2012、GM/T 0009-2012、GM/T 0010-2012
+- go package： `github.com/Hyperledger-TWGC/tj-gmsm/sm2`
 
 ### 代码示例
 
