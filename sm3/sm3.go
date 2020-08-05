@@ -63,7 +63,7 @@ func (sm3 *SM3) pad() []byte {
 	return msg
 }
 
-func (sm3 *SM3) update(msg []byte, nblocks int) {
+func (sm3 *SM3) update(msg []byte) {
 	var w [68]uint32
 	var w1 [64]uint32
 
@@ -119,7 +119,7 @@ func (sm3 *SM3) update(msg []byte, nblocks int) {
 	}
 	sm3.digest[0], sm3.digest[1], sm3.digest[2], sm3.digest[3], sm3.digest[4], sm3.digest[5], sm3.digest[6], sm3.digest[7] = a, b, c, d, e, f, g, h
 }
-func (sm3 *SM3) update2(msg []byte, nblocks int) [8]uint32 {
+func (sm3 *SM3) update2(msg []byte,) [8]uint32 {
 	var w [68]uint32
 	var w1 [64]uint32
 
@@ -219,7 +219,7 @@ func (sm3 *SM3) Write(p []byte) (int, error) {
 	sm3.length += uint64(len(p) * 8)
 	msg := append(sm3.unhandleMsg, p...)
 	nblocks := len(msg) / sm3.BlockSize()
-	sm3.update(msg, nblocks)
+	sm3.update(msg)
 	// Update unhandleMsg
 	sm3.unhandleMsg = msg[nblocks*sm3.BlockSize():]
 
@@ -233,7 +233,7 @@ func (sm3 *SM3) Sum(in []byte) []byte {
 	_, _ = sm3.Write(in)
 	msg := sm3.pad()
 	//Finalize
-	digest := sm3.update2(msg, len(msg)/sm3.BlockSize())
+	digest := sm3.update2(msg)
 
 	// save hash to in
 	needed := sm3.Size()

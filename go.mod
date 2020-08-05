@@ -3,8 +3,8 @@ module github.com/Hyperledger-TWGC/tj-gmsm
 go 1.14
 
 require (
-	github.com/golang/protobuf v1.3.3
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/net v0.0.0-20200625001655-4c5254603344
-	google.golang.org/grpc v1.30.0
+	github.com/golang/protobuf v1.4.2
+	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
+	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	google.golang.org/grpc v1.31.0
 )
