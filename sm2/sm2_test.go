@@ -17,6 +17,7 @@ package sm2
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -25,14 +26,14 @@ import (
 )
 
 func TestSm2(t *testing.T) {
-	priv, err := GenerateKey() // 生成密钥对
+	priv, err := GenerateKey(nil) // 生成密钥对
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Printf("%v\n", priv.Curve.IsOnCurve(priv.X, priv.Y)) // 验证是否为sm2的曲线
 	pub := &priv.PublicKey
 	msg := []byte("123456")
-	d0, err := pub.Encrypt(msg)
+	d0, err := pub.Encrypt(msg, nil)
 	if err != nil {
 		fmt.Printf("Error: failed to encrypt %s: %v\n", msg, err)
 		return
@@ -44,8 +45,8 @@ func TestSm2(t *testing.T) {
 	}
 	fmt.Printf("clear text = %s\n", d1)
 
-	msg, _ = ioutil.ReadFile("ifile")             // 从文件读取数据
-	sign, err := priv.Sign(msg, nil) // 签名
+	msg, _ = ioutil.ReadFile("ifile")           // 从文件读取数据
+	sign, err := priv.Sign(rand.Reader, msg,nil) // 签名
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,13 +74,13 @@ func TestSm2(t *testing.T) {
 func BenchmarkSM2(t *testing.B) {
 	t.ReportAllocs()
 	msg := []byte("test")
-	priv, err := GenerateKey() // 生成密钥对
+	priv, err := GenerateKey(nil) // 生成密钥对
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		sign, err := priv.Sign( msg, nil) // 签名
+		sign, err := priv.Sign(nil,msg,  nil) // 签名
 		if err != nil {
 			t.Fatal(err)
 		}

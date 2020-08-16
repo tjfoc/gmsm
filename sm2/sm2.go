@@ -24,9 +24,10 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"errors"
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm3"
 	"io"
 	"math/big"
+
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm3"
 )
 
 var (
@@ -61,15 +62,14 @@ type sm2Cipher struct {
 func (priv *PrivateKey) Public() crypto.PublicKey {
 	return &priv.PublicKey
 }
+
 var errZeroParam = errors.New("zero parameter")
 var one = new(big.Int).SetInt64(1)
+
 //****************************Signature algorithm****************************//
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
-func (priv *PrivateKey) Sign(msg []byte, uid []byte) ([]byte, error) {
-	if len(uid) == 0{
-		uid = default_uid
-	}
-	r, s, err := Sm2Sign(priv, msg, uid)
+func (priv *PrivateKey) Sign(random io.Reader, msg []byte, signer crypto.SignerOpts) ([]byte, error) {
+	r, s, err := Sm2Sign(priv, msg, nil, random)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +86,8 @@ func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 }
 
 //****************************Encryption algorithm****************************//
-func (pub *PublicKey) Encrypt(data []byte) ([]byte, error) {
-	return EncryptAsn1(pub, data)
+func (pub *PublicKey) Encrypt(data []byte, random io.Reader) ([]byte, error) {
+	return EncryptAsn1(pub, data, random)
 }
 
 func (priv *PrivateKey) Decrypt(data []byte) ([]byte, error) {
@@ -107,8 +107,7 @@ func KeyExchangeA(klen int, ida, idb []byte, priA *PrivateKey, pubB *PublicKey, 
 
 //****************************************************************************//
 
-
-func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
+func Sm2Sign(priv *PrivateKey, msg, uid []byte, random io.Reader) (r, s *big.Int, err error) {
 	if len(uid) == 0 {
 		uid = default_uid
 	}
@@ -128,7 +127,7 @@ func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
 	var k *big.Int
 	for { // 调整算法细节以实现SM2
 		for {
-			k, err = randFieldElement(c, rand.Reader)
+			k, err = randFieldElement(c, random)
 			if err != nil {
 				r = nil
 				return
@@ -192,7 +191,6 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 	return x.Cmp(r) == 0
 }
 
-
 /*
  * sm2密文结构如下:
  *  x
@@ -200,12 +198,12 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
  *  hash
  *  CipherText
  */
-func Encrypt(pub *PublicKey, data []byte) ([]byte, error) {
+func Encrypt(pub *PublicKey, data []byte, random io.Reader) ([]byte, error) {
 	length := len(data)
 	for {
 		c := []byte{}
 		curve := pub.Curve
-		k, err := randFieldElement(curve, rand.Reader)
+		k, err := randFieldElement(curve, random)
 		if err != nil {
 			return nil, err
 		}
@@ -339,9 +337,6 @@ func keyExchange(klen int, ida, idb []byte, pri *PrivateKey, pub *PublicKey, rpr
 	return k, S1, S2, nil
 }
 
-
-
-
 func msgHash(za, msg []byte) (*big.Int, error) {
 	e := sm3.New()
 	e.Write(za)
@@ -394,8 +389,8 @@ func zeroByteSlice() []byte {
 /*
 sm2加密，返回asn.1编码格式的密文内容
 */
-func EncryptAsn1(pub *PublicKey, data []byte) ([]byte, error) {
-	cipher, err := Encrypt(pub, data)
+func EncryptAsn1(pub *PublicKey, data []byte, rand io.Reader) ([]byte, error) {
+	cipher, err := Encrypt(pub, data, rand)
 	if err != nil {
 		return nil, err
 	}
@@ -520,10 +515,13 @@ func kdf(length int, x ...[]byte) ([]byte, bool) {
 	return c, false
 }
 
-func randFieldElement(c elliptic.Curve, rand io.Reader) (k *big.Int, err error) {
+func randFieldElement(c elliptic.Curve, random io.Reader) (k *big.Int, err error) {
+	if random == nil {
+		random = rand.Reader //If there is no external trusted random source,please use rand.Reader to instead of it.
+	}
 	params := c.Params()
 	b := make([]byte, params.BitSize/8+8)
-	_, err = io.ReadFull(rand, b)
+	_, err = io.ReadFull(random, b)
 	if err != nil {
 		return
 	}
@@ -534,9 +532,9 @@ func randFieldElement(c elliptic.Curve, rand io.Reader) (k *big.Int, err error) 
 	return
 }
 
-func GenerateKey() (*PrivateKey, error) {
+func GenerateKey(random io.Reader) (*PrivateKey, error) {
 	c := P256Sm2()
-	k, err := randFieldElement(c, rand.Reader)
+	k, err := randFieldElement(c, random)
 	if err != nil {
 		return nil, err
 	}
@@ -563,4 +561,3 @@ var zeroReader = &zr{}
 func getLastBit(a *big.Int) uint {
 	return a.Bit(0)
 }
-
