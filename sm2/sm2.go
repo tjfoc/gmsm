@@ -65,8 +65,11 @@ var errZeroParam = errors.New("zero parameter")
 var one = new(big.Int).SetInt64(1)
 //****************************Signature algorithm****************************//
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
-func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
-	r, s, err := Sm2Sign(priv, msg, default_uid)
+func (priv *PrivateKey) Sign(msg []byte, uid []byte) ([]byte, error) {
+	if len(uid) == 0{
+		uid = default_uid
+	}
+	r, s, err := Sm2Sign(priv, msg, uid)
 	if err != nil {
 		return nil, err
 	}
