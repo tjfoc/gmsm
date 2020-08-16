@@ -17,7 +17,6 @@ package sm2
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -46,7 +45,7 @@ func TestSm2(t *testing.T) {
 	fmt.Printf("clear text = %s\n", d1)
 
 	msg, _ = ioutil.ReadFile("ifile")             // 从文件读取数据
-	sign, err := priv.Sign(rand.Reader, msg, nil) // 签名
+	sign, err := priv.Sign(msg, nil) // 签名
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,16 +79,11 @@ func BenchmarkSM2(t *testing.B) {
 	}
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		sign, err := priv.Sign(rand.Reader, msg, nil) // 签名
+		sign, err := priv.Sign( msg, nil) // 签名
 		if err != nil {
 			t.Fatal(err)
 		}
 		priv.Verify(msg, sign) // 密钥验证
-		// if ok != true {
-		// 	fmt.Printf("Verify error\n")
-		// } else {
-		// 	fmt.Printf("Verify ok\n")
-		// }
 	}
 }
 
