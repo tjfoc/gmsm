@@ -85,11 +85,6 @@ func BenchmarkSM2(t *testing.B) {
 			t.Fatal(err)
 		}
 		priv.Verify(msg, sign) // 密钥验证
-		// if ok != true {
-		// 	fmt.Printf("Verify error\n")
-		// } else {
-		// 	fmt.Printf("Verify ok\n")
-		// }
 	}
 }
 
