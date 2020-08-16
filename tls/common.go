@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hyperledger-TWGC/tj-gmsm/x509"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 )
 
 const (

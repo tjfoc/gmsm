@@ -21,14 +21,14 @@ import (
 
 	"encoding/asn1"
 	"fmt"
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 	"math/big"
 	"testing"
 	"time"
 )
 
 func TestX509(t *testing.T) {
-	priv, err := sm2.GenerateKey() // 生成密钥对
+	priv, err := sm2.GenerateKey(nil) // 生成密钥对
 	if err != nil {
 		t.Fatal(err)
 	}

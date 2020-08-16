@@ -23,13 +23,13 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 	"io"
 	"net"
 	"strconv"
 	"strings"
 
-	"github.com/Hyperledger-TWGC/tj-gmsm/x509"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 )
 
 type clientHandshakeState struct {

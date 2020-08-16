@@ -27,14 +27,12 @@ import (
 	"crypto/sha512"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/pem"
 	"errors"
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
 	"hash"
-	"io/ioutil"
 	"math/big"
-	"os"
 	"reflect"
+
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 )
 
 /*

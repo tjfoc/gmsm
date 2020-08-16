@@ -27,8 +27,8 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
-	"github.com/Hyperledger-TWGC/tj-gmsm/x509"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 
 	"golang.org/x/crypto/curve25519"
 )

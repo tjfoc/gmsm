@@ -18,12 +18,12 @@ package gmcredentials
 import (
 	"errors"
 	"fmt"
-	gmtls "github.com/Hyperledger-TWGC/tj-gmsm/tls"
+	gmtls "github.com/Hyperledger-TWGC/tjfoc-gm/tls"
 	"io/ioutil"
 	"net"
 	"strings"
 
-	"github.com/Hyperledger-TWGC/tj-gmsm/x509"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 
 	"google.golang.org/grpc/credentials"
 

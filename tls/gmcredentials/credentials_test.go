@@ -7,9 +7,9 @@ import (
 	"net"
 	"testing"
 
-	"github.com/Hyperledger-TWGC/tj-gmsm/tls"
-	"github.com/Hyperledger-TWGC/tj-gmsm/tls/gmcredentials/echo"
-	"github.com/Hyperledger-TWGC/tj-gmsm/x509"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/tls"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/tls/gmcredentials/echo"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

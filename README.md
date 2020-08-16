@@ -3,8 +3,8 @@ GM SM2/3/4 library based on Golang
 
 基于Go语言的国密SM2/SM3/SM4加密算法库
 
-[![Build Status](https://travis-ci.com/Hyperledger-TWGC/tj-gmsm.svg?branch=dev-fabric)](https://travis-ci.com/Hyperledger-TWGC/tj-gmsm)
-[![Build Status](https://dev.azure.com/Hyperledger/TWGC/_apis/build/status/Hyperledger-TWGC.tj-gmsm?branchName=dev-fabric)](https://dev.azure.com/Hyperledger/TWGC/_build/latest?definitionId=122&branchName=dev-fabric)
+[![Build Status](https://travis-ci.com/Hyperledger-TWGC/tjfoc-gm.svg?branch=dev-fabric)](https://travis-ci.com/Hyperledger-TWGC/tjfoc-gm)
+[![Build Status](https://dev.azure.com/Hyperledger/TWGC/_apis/build/status/Hyperledger-TWGC.tjfoc-gm?branchName=dev-fabric)](https://dev.azure.com/Hyperledger/TWGC/_build/latest?definitionId=122&branchName=dev-fabric)
 ## Feature
 GMSM包含以下主要功能
 

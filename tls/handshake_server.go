@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
-	"github.com/Hyperledger-TWGC/tj-gmsm/x509"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 )
 
 // serverHandshakeState contains details of a server handshake in progress.

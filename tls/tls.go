@@ -29,8 +29,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
-	X "github.com/Hyperledger-TWGC/tj-gmsm/x509"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
+	X "github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 )
 
 // Server returns a new TLS server side connection

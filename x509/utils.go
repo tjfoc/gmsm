@@ -3,7 +3,7 @@ package x509
 import (
 	"encoding/pem"
 	"errors"
-	"github.com/Hyperledger-TWGC/tj-gmsm/sm2"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 	"io/ioutil"
 	"os"
 )
@@ -116,4 +116,3 @@ func WritePublicKeytoPem(FileName string, key *sm2.PublicKey) (err error) {
 	}
 	return nil
 }
-

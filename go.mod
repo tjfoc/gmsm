@@ -1,4 +1,4 @@
-module github.com/Hyperledger-TWGC/tj-gmsm
+module github.com/Hyperledger-TWGC/tjfoc-gm
 
 go 1.14
 
