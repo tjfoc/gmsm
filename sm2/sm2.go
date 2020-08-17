@@ -65,6 +65,7 @@ func (priv *PrivateKey) Public() crypto.PublicKey {
 
 var errZeroParam = errors.New("zero parameter")
 var one = new(big.Int).SetInt64(1)
+var two = new(big.Int).SetInt64(2)
 
 //****************************Signature algorithm****************************//
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
@@ -367,6 +368,9 @@ func ZA(pub *PublicKey, uid []byte) ([]byte, error) {
 	if n := len(xBuf); n < 32 {
 		xBuf = append(zeroByteSlice()[:32-n], xBuf...)
 	}
+	if n := len(yBuf); n < 32 {
+		yBuf = append(zeroByteSlice()[:32-n], yBuf...)
+	}
 	za.Write(xBuf)
 	za.Write(yBuf)
 	return za.Sum(nil)[:32], nil
@@ -534,10 +538,19 @@ func randFieldElement(c elliptic.Curve, random io.Reader) (k *big.Int, err error
 
 func GenerateKey(random io.Reader) (*PrivateKey, error) {
 	c := P256Sm2()
-	k, err := randFieldElement(c, random)
+	if random == nil {
+		random = rand.Reader //If there is no external trusted random source,please use rand.Reader to instead of it.
+	}
+	params := c.Params()
+	b := make([]byte, params.BitSize/8+8)
+	_, err := io.ReadFull(random, b)
 	if err != nil {
 		return nil, err
 	}
+	k := new(big.Int).SetBytes(b)
+	n := new(big.Int).Sub(params.N, two)
+	k.Mod(k, n)
+	k.Add(k, one)
 	priv := new(PrivateKey)
 	priv.PublicKey.Curve = c
 	priv.D = k
