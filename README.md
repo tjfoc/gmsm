@@ -1,12 +1,12 @@
-# GMSM
+# tjfoc-gm
 GM SM2/3/4 library based on Golang
 
 基于Go语言的国密SM2/SM3/SM4加密算法库
 
 [![Build Status](https://travis-ci.com/Hyperledger-TWGC/tjfoc-gm.svg?branch=dev-fabric)](https://travis-ci.com/Hyperledger-TWGC/tjfoc-gm)
-[![Build Status](https://dev.azure.com/Hyperledger/TWGC/_apis/build/status/Hyperledger-TWGC.tjfoc-gm?branchName=dev-fabric)](https://dev.azure.com/Hyperledger/TWGC/_build/latest?definitionId=122&branchName=dev-fabric)
+[![Build Status](https://dev.azure.com/Hyperledger/TWGC/_apis/build/status/Hyperledger-TWGC.tjfoc-gm?branchName=dev-fabric)](https://dev.azure.com/Hyperledger/TWGC/_build/latest?definitionId=127&branchName=dev-fabric)
 ## Feature
-GMSM包含以下主要功能
+tjfoc-gm包含以下主要功能
 
     SM2: 国密椭圆曲线算法库
         . 支持Generate Key, Sign, Verify基础操作
@@ -27,7 +27,7 @@ GMSM包含以下主要功能
 ## [Usage 使用说明](./API使用说明.md)
 
 ## Communication
-GMSM交流 
+tjfoc国密交流 
    
 [![Join the chat at https://gitter.im/tjfoc/gmsm](https://badges.gitter.im/tjfoc/gmsm.svg)](https://gitter.im/tjfoc/gmsm?utm_source=badge&utm_medium=badge&utm_campaign=-badge&utm_content=badge)
 

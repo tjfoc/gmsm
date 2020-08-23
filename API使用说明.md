@@ -1,6 +1,6 @@
 # 国密GM/T Go API使用说明
 
-## 国密gmsm包安装
+## Go包安装
 
 ```bash
 go get -u github.com/Hyperledger-TWGC/tjfoc-gm
