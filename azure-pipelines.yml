@@ -19,6 +19,5 @@ jobs:
       - script: go vet ./sm4
       - script: go get -u golang.org/x/lint/golint; export golint=$(go list -f {{.Target}} golang.org/x/lint/golint); $golint .
         displayName: golint
-      - script: go test -v ./sm2
-      - script: go test -v ./sm3
-      - script: go test -v ./sm4
+      - script: go test -v ./...
+        displayName: go test recursive

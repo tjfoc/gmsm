@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-sm4 acceration
+sm4 acceleration
 modified by Jack, 2017 Oct
 */
 
@@ -236,7 +236,6 @@ func DecryptBlock(key SM4Key, dst, src []byte) {
 	subkeys := generateSubKeys(key)
 	cryptBlock(subkeys, make([]uint32, 4), make([]byte, 16), dst, src, true)
 }
-
 
 // NewCipher creates and returns a new cipher.Block.
 func NewCipher(key []byte) (cipher.Block, error) {
