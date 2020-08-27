@@ -227,16 +227,6 @@ func generateSubKeys(key []byte) []uint32 {
 	return subkeys
 }
 
-func EncryptBlock(key SM4Key, dst, src []byte) {
-	subkeys := generateSubKeys(key)
-	cryptBlock(subkeys, make([]uint32, 4), make([]byte, 16), dst, src, false)
-}
-
-func DecryptBlock(key SM4Key, dst, src []byte) {
-	subkeys := generateSubKeys(key)
-	cryptBlock(subkeys, make([]uint32, 4), make([]byte, 16), dst, src, true)
-}
-
 // NewCipher creates and returns a new cipher.Block.
 func NewCipher(key []byte) (cipher.Block, error) {
 	if len(key) != BlockSize {
