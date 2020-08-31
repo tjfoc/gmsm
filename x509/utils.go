@@ -13,13 +13,9 @@ import (
 	"os"
 )
 
-func ReadPrivateKeyFromPem(FileName string, pwd []byte) (*sm2.PrivateKey, error) {
-	data, err := ioutil.ReadFile(FileName)
-	if err != nil {
-		return nil, err
-	}
+func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {
 	var block *pem.Block
-	block, _ = pem.Decode(data)
+	block, _ = pem.Decode(privateKeyPem)
 	if block == nil {
 		return nil, errors.New("failed to decode private key")
 	}
@@ -27,11 +23,11 @@ func ReadPrivateKeyFromPem(FileName string, pwd []byte) (*sm2.PrivateKey, error)
 	return priv, err
 }
 
-func WritePrivateKeytoPem(FileName string, key *sm2.PrivateKey, pwd []byte) (err error) {
+func WritePrivateKeytoPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	var block *pem.Block
 	der, err := MarshalSm2PrivateKey(key, pwd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if pwd != nil {
 		block = &pem.Block{
@@ -45,18 +41,7 @@ func WritePrivateKeytoPem(FileName string, key *sm2.PrivateKey, pwd []byte) (err
 		}
 	}
 	certPem := pem.EncodeToMemory(block)
-	file, err := os.Create(FileName)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = file.Close()
-	}()
-	_, err = file.Write(certPem)
-	if err != nil {
-		return err
-	}
-	return nil
+	return certPem, nil
 }
 
 func ReadPublicKeyFromPem(FileName string) (*sm2.PublicKey, error) {
@@ -71,7 +56,7 @@ func ReadPublicKeyFromPem(FileName string) (*sm2.PublicKey, error) {
 	return ParseSm2PublicKey(block.Bytes)
 }
 
-func WritePublicKeytoPem(FileName string, key *sm2.PublicKey) (err error) {
+func WritePublicKeytoPem(FileName string, key *sm2.PublicKey) error {
 	der, err := MarshalSm2PublicKey(key)
 	if err != nil {
 		return err

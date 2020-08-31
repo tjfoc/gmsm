@@ -17,7 +17,9 @@ package x509
 
 import (
 	"crypto/x509/pkix"
+	"io/ioutil"
 	"net"
+	"os"
 
 	"encoding/asn1"
 	"fmt"
@@ -32,7 +34,23 @@ func TestX509(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = WritePrivateKeytoPem("priv.pem", priv, nil) // 生成密钥文件
+
+	privPemFile, err := os.Create("priv.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err = privPemFile.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	certPem, err := WritePrivateKeytoPem(priv, nil) // 生成密钥文件
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = privPemFile.Write(certPem)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +59,11 @@ func TestX509(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	privKey, err := ReadPrivateKeyFromPem("priv.pem", nil) // 读取密钥
+	privPem, err := ioutil.ReadFile("priv.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	privKey, err := ReadPrivateKeyFromPem(privPem, nil) // 读取密钥
 	if err != nil {
 		t.Fatal(err)
 	}
