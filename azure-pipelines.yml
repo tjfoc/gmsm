@@ -19,7 +19,5 @@ steps:
   - script: go vet ./sm2
   - script: go vet ./sm3
   - script: go vet ./sm4
-  - script: go get -u golang.org/x/lint/golint; export golint=$(go list -f {{.Target}} golang.org/x/lint/golint); $golint .
-    displayName: golint
   - script: go test -v ./...
     displayName: go test recursive
