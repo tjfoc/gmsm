@@ -28,8 +28,4 @@ script:
   - go vet ./x509
   - go vet ./tls/gmcredentials
   - golint .
-  - go test -v ./sm2
-  - go test -v ./sm3
-  - go test -v ./sm4
-  - go test -v ./x509
-  - go test -v ./tls/gmcredentials
+  - go test -v ./...
