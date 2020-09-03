@@ -543,6 +543,7 @@ func GenerateKey(random io.Reader) (*PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	k := new(big.Int).SetBytes(b)
 	n := new(big.Int).Sub(params.N, two)
 	k.Mod(k, n)
@@ -551,6 +552,7 @@ func GenerateKey(random io.Reader) (*PrivateKey, error) {
 	priv.PublicKey.Curve = c
 	priv.D = k
 	priv.PublicKey.X, priv.PublicKey.Y = c.ScalarBaseMult(k.Bytes())
+
 	return priv, nil
 }
 

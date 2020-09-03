@@ -13,9 +13,13 @@ import (
 	"os"
 )
 
-func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {
+func ReadPrivateKeyFromPem(FileName string, pwd []byte) (*sm2.PrivateKey, error) {
+	data, err := ioutil.ReadFile(FileName)
+	if err != nil {
+		return nil, err
+	}
 	var block *pem.Block
-	block, _ = pem.Decode(privateKeyPem)
+	block, _ = pem.Decode(data)
 	if block == nil {
 		return nil, errors.New("failed to decode private key")
 	}
