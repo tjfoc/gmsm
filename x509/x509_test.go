@@ -17,7 +17,6 @@ package x509
 
 import (
 	"crypto/x509/pkix"
-	"io/ioutil"
 	"net"
 	"os"
 
@@ -59,11 +58,11 @@ func TestX509(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	privPem, err := ioutil.ReadFile("priv.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
-	privKey, err := ReadPrivateKeyFromPem(privPem, nil) // 读取密钥
+	//privPem, err := ioutil.ReadFile("priv.pem")
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	privKey, err := ReadPrivateKeyFromPem("priv.pem", nil) // 读取密钥
 	if err != nil {
 		t.Fatal(err)
 	}
