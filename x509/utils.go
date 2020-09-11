@@ -12,7 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 )
-
+//read private key from PEM format
 func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {
 	var block *pem.Block
 	block, _ = pem.Decode(privateKeyPem)
@@ -22,10 +22,10 @@ func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, e
 	priv, err := ParsePKCS8PrivateKey(block.Bytes, pwd)
 	return priv, err
 }
-
+//Convert private key to PEM format
 func WritePrivateKeytoPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	var block *pem.Block
-	der, err := MarshalSm2PrivateKey(key, pwd)
+	der, err := MarshalSm2PrivateKey(key, pwd)  //Convert private key to DER format
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func WritePrivateKeytoPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	certPem := pem.EncodeToMemory(block)
 	return certPem, nil
 }
-
+//read publick key from PEM format
 func ReadPublicKeyFromPem(FileName string) (*sm2.PublicKey, error) {
 	data, err := ioutil.ReadFile(FileName)
 	if err != nil {
@@ -55,9 +55,9 @@ func ReadPublicKeyFromPem(FileName string) (*sm2.PublicKey, error) {
 	}
 	return ParseSm2PublicKey(block.Bytes)
 }
-
+//Convert public key to PEM format
 func WritePublicKeytoPem(FileName string, key *sm2.PublicKey) error {
-	der, err := MarshalSm2PublicKey(key)
+	der, err := MarshalSm2PublicKey(key) //Convert publick key to DER format
 	if err != nil {
 		return err
 	}
