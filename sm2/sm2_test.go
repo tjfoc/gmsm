@@ -26,7 +26,8 @@ import (
 )
 
 func TestSm2(t *testing.T) {
-	priv, err := GenerateKey(nil) // 生成密钥对
+	priv, err := GenerateKey(rand.Reader) // 生成密钥对
+	fmt.Println(priv)
 	if err != nil {
 		t.Fatal(err)
 	}

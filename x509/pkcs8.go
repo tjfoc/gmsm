@@ -172,6 +172,9 @@ func MarshalSm2PublicKey(key *sm2.PublicKey) ([]byte, error) {
 	var r pkixPublicKey
 	var algo pkix.AlgorithmIdentifier
 
+	if(key.Curve.Params()!=sm2.P256Sm2().Params()){
+		return nil, errors.New("x509: unsupported elliptic curve")
+	}
 	algo.Algorithm = oidSM2
 	algo.Parameters.Class = 0
 	algo.Parameters.Tag = 6
@@ -277,6 +280,7 @@ func ParsePKCS8EcryptedPrivateKey(der, pwd []byte) (*sm2.PrivateKey, error) {
 
 func ParsePKCS8PrivateKey(der, pwd []byte) (*sm2.PrivateKey, error) {
 	if pwd == nil {
+		
 		return ParsePKCS8UnecryptedPrivateKey(der)
 	}
 	return ParsePKCS8EcryptedPrivateKey(der, pwd)
