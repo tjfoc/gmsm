@@ -90,7 +90,7 @@ func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts)
 	return asn1.Marshal(sm2Signature{r, s})
 }
 
-func (priv *PrivateKey) Decrypt(data []byte) ([]byte, error) {
+func (priv *PrivateKey) Decrypt(rand io.Reader, data []byte, opts crypto.DecrypterOpts) ([]byte, error) {
 	return DecryptAsn1(priv, data)
 }
 
