@@ -8,10 +8,10 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
+
 	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
-	"io/ioutil"
-	"os"
 )
+
 //read private key from PEM format
 func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {
 	var block *pem.Block
@@ -22,10 +22,11 @@ func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, e
 	priv, err := ParsePKCS8PrivateKey(block.Bytes, pwd)
 	return priv, err
 }
+
 //Convert private key to PEM format
 func WritePrivateKeytoPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	var block *pem.Block
-	der, err := MarshalSm2PrivateKey(key, pwd)  //Convert private key to DER format
+	der, err := MarshalSm2PrivateKey(key, pwd) //Convert private key to DER format
 	if err != nil {
 		return nil, err
 	}
@@ -43,113 +44,82 @@ func WritePrivateKeytoPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	certPem := pem.EncodeToMemory(block)
 	return certPem, nil
 }
+
 //read publick key from PEM format
-func ReadPublicKeyFromPem(FileName string) (*sm2.PublicKey, error) {
-	data, err := ioutil.ReadFile(FileName)
-	if err != nil {
-		return nil, err
-	}
-	block, _ := pem.Decode(data)
+func ReadPublicKeyFromPem(publicKeyPem []byte) (*sm2.PublicKey, error) {
+	block, _ := pem.Decode(publicKeyPem)
 	if block == nil || block.Type != "PUBLIC KEY" {
 		return nil, errors.New("failed to decode public key")
 	}
 	return ParseSm2PublicKey(block.Bytes)
 }
+
 //Convert public key to PEM format
-func WritePublicKeytoPem(FileName string, key *sm2.PublicKey) error {
+func WritePublicKeytoPem(key *sm2.PublicKey) ([]byte, error) {
 	der, err := MarshalSm2PublicKey(key) //Convert publick key to DER format
 	if err != nil {
-		return err
+		return nil, err
 	}
 	block := &pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: der,
 	}
 	certPem := pem.EncodeToMemory(block)
-	file, err := os.Create(FileName)
-	defer func() {
-		err = file.Close()
-	}()
-	if err != nil {
-		return err
-	}
-	_, err = file.Write(certPem)
-	if err != nil {
-		return err
-	}
-	return nil
+	return certPem, nil
 }
 
-func ReadCertificateRequestFromPem(FileName string) (*CertificateRequest, error) {
-	data, err := ioutil.ReadFile(FileName)
-	if err != nil {
-		return nil, err
-	}
-	block, _ := pem.Decode(data)
+func ReadCertificateRequestFromPem(certPem []byte) (*CertificateRequest, error) {
+	block, _ := pem.Decode(certPem)
 	if block == nil {
 		return nil, errors.New("failed to decode certificate request")
 	}
 	return ParseCertificateRequest(block.Bytes)
 }
 
-func CreateCertificateRequestToPem(FileName string, template *CertificateRequest, privKey *sm2.PrivateKey) error {
+func CreateCertificateRequestToPem(template *CertificateRequest, privKey *sm2.PrivateKey) ([]byte, error) {
 	der, err := CreateCertificateRequest(rand.Reader, template, privKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	block := &pem.Block{
 		Type:  "CERTIFICATE REQUEST",
 		Bytes: der,
 	}
-	file, err := os.Create(FileName)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = file.Close()
-	}()
-	err = pem.Encode(file, block)
-	if err != nil {
-		return err
-	}
-	return nil
+	certPem := pem.EncodeToMemory(block)
+	return certPem, nil
 }
 
-func ReadCertificateFromPem(FileName string) (*Certificate, error) {
-	data, err := ioutil.ReadFile(FileName)
-	if err != nil {
-		return nil, err
-	}
-	block, _ := pem.Decode(data)
+func ReadCertificateFromPem(certPem []byte) (*Certificate, error) {
+	block, _ := pem.Decode(certPem)
 	if block == nil {
 		return nil, errors.New("failed to decode certificate request")
 	}
 	return ParseCertificate(block.Bytes)
 }
 
-func CreateCertificateToPem(FileName string, template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) error {
+func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
 	if template.SerialNumber == nil {
-		return errors.New("x509: no SerialNumber given")
+		return nil, errors.New("x509: no SerialNumber given")
 	}
 
 	hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(privKey.Public(), template.SignatureAlgorithm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	publicKeyBytes, publicKeyAlgorithm, err := marshalPublicKey(pubKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	asn1Issuer, err := subjectBytes(parent)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	asn1Subject, err := subjectBytes(template)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !bytes.Equal(asn1Issuer, asn1Subject) && len(parent.SubjectKeyId) > 0 {
@@ -158,7 +128,7 @@ func CreateCertificateToPem(FileName string, template, parent *Certificate, pubK
 
 	extensions, err := buildExtensions(template)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	encodedPublicKey := asn1.BitString{BitLength: len(publicKeyBytes) * 8, Bytes: publicKeyBytes}
 	c := tbsCertificate{
@@ -174,7 +144,7 @@ func CreateCertificateToPem(FileName string, template, parent *Certificate, pubK
 
 	tbsCertContents, err := asn1.Marshal(c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	c.Raw = tbsCertContents
@@ -201,7 +171,7 @@ func CreateCertificateToPem(FileName string, template, parent *Certificate, pubK
 	var signature []byte
 	signature, err = privKey.Sign(rand.Reader, digest, signerOpts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	der, err := asn1.Marshal(certificate{
 		nil,
@@ -211,23 +181,12 @@ func CreateCertificateToPem(FileName string, template, parent *Certificate, pubK
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 	block := &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: der,
 	}
 	certPem := pem.EncodeToMemory(block)
-	file, err := os.Create(FileName)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = file.Close()
-	}()
-	_, err = file.Write(certPem)
-	if err != nil {
-		return err
-	}
-	return nil
+	return certPem, nil
 }

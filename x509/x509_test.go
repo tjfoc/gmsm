@@ -17,16 +17,14 @@ package x509
 
 import (
 	"crypto/x509/pkix"
-	"io/ioutil"
-	"net"
-	"os"
-
 	"encoding/asn1"
 	"fmt"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 	"math/big"
+	"net"
 	"testing"
 	"time"
+
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 )
 
 func TestX509(t *testing.T) {
@@ -34,40 +32,17 @@ func TestX509(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	privPemFile, err := os.Create("priv.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err = privPemFile.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	certPem, err := WritePrivateKeytoPem(priv, nil) // 生成密钥文件
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = privPemFile.Write(certPem)
+	privPem, err := WritePrivateKeytoPem(priv, nil) // 生成密钥文件
 	if err != nil {
 		t.Fatal(err)
 	}
 	pubKey, _ := priv.Public().(*sm2.PublicKey)
-	err = WritePublicKeytoPem("pub.pem", pubKey) // 生成公钥文件
-	if err != nil {
-		t.Fatal(err)
-	}
-	privPem, err := ioutil.ReadFile("priv.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pubkeyPem, err := WritePublicKeytoPem(pubKey)       // 生成公钥文件
 	privKey, err := ReadPrivateKeyFromPem(privPem, nil) // 读取密钥
 	if err != nil {
 		t.Fatal(err)
 	}
-	pubKey, err = ReadPublicKeyFromPem("pub.pem") // 读取公钥
+	pubKey, err = ReadPublicKeyFromPem(pubkeyPem) // 读取公钥
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,11 +54,11 @@ func TestX509(t *testing.T) {
 		//		SignatureAlgorithm: ECDSAWithSHA256,
 		SignatureAlgorithm: SM2WithSM3,
 	}
-	err = CreateCertificateRequestToPem("req.pem", &templateReq, privKey)
+	reqPem, err := CreateCertificateRequestToPem(&templateReq, privKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	req, err := ReadCertificateRequestFromPem("req.pem")
+	req, err := ReadCertificateRequestFromPem(reqPem)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,11 +135,11 @@ func TestX509(t *testing.T) {
 		},
 	}
 	pubKey, _ = priv.Public().(*sm2.PublicKey)
-	err = CreateCertificateToPem("cert.pem", &template, &template, pubKey, privKey)
+	certpem, err := CreateCertificateToPem(&template, &template, pubKey, privKey)
 	if err != nil {
 		t.Fatal("failed to create cert file")
 	}
-	cert, err := ReadCertificateFromPem("cert.pem")
+	cert, err := ReadCertificateFromPem(certpem)
 	if err != nil {
 		t.Fatal("failed to read cert file")
 	}
