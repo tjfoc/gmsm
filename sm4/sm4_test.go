@@ -35,18 +35,34 @@ func TestSM4(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Printf("data = %x\n", data)
-	c, err := NewCipher(key)
+	ecbMsg, err := Sm4Ecb(key, data, true)
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf("sm4 enc error:%s", err)
+		return
 	}
-	d0 := make([]byte, 16)
-	c.Encrypt(d0, data)
-	fmt.Printf("d0 = %x\n", d0)
-	d1 := make([]byte, 16)
-	c.Decrypt(d1, d0)
-	fmt.Printf("d1 = %x\n", d1)
-	if sa := testCompare(data, d1); sa != true {
-		t.Fatal("Error data!")
+	fmt.Printf("ecbMsg = %x\n", ecbMsg)
+	ecbDec, err := Sm4Ecb(key, ecbMsg, false)
+	if err != nil {
+		t.Errorf("sm4 dec error:%s", err)
+		return
+	}
+	fmt.Printf("ecbDec = %x\n", ecbDec)
+	if !testCompare(data, ecbDec) {
+		t.Errorf("sm4 self enc and dec failed")
+	}
+	cbcMsg, err := Sm4Cbc(key, data, true)
+	if err != nil {
+		t.Errorf("sm4 enc error:%s", err)
+	}
+	fmt.Printf("cbcMsg = %x\n", cbcMsg)
+	cbcDec, err := Sm4Cbc(key, cbcMsg, false)
+	if err != nil {
+		t.Errorf("sm4 dec error:%s", err)
+		return
+	}
+	fmt.Printf("cbcDec = %x\n", cbcDec)
+	if !testCompare(data, cbcDec) {
+		t.Errorf("sm4 self enc and dec failed")
 	}
 }
 

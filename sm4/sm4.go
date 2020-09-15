@@ -19,6 +19,7 @@ modified by Jack, 2017 Oct
 package sm4
 
 import (
+	"bytes"
 	"crypto/cipher"
 	"errors"
 	"strconv"
@@ -249,4 +250,111 @@ func (c *Sm4Cipher) Encrypt(dst, src []byte) {
 
 func (c *Sm4Cipher) Decrypt(dst, src []byte) {
 	cryptBlock(c.subkeys, c.block1, c.block2, dst, src, true)
+}
+func xor(in, iv []byte) (out []byte) {
+	if len(in) != len(iv) {
+		return nil
+	}
+
+	out = make([]byte, len(in))
+	for i := 0; i < len(in); i++ {
+		out[i] = in[i] ^ iv[i]
+	}
+	return
+}
+func pkcs7Padding(src []byte) []byte {
+	padding := BlockSize - len(src)%BlockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(src, padtext...)
+}
+
+func pkcs7UnPadding(src []byte) ([]byte, error) {
+	length := len(src)
+	unpadding := int(src[length-1])
+	if unpadding > BlockSize || unpadding == 0 {
+		return nil, errors.New("Invalid pkcs7 padding (unpadding > BlockSize || unpadding == 0)")
+	}
+
+	pad := src[len(src)-unpadding:]
+	for i := 0; i < unpadding; i++ {
+		if pad[i] != byte(unpadding) {
+			return nil, errors.New("Invalid pkcs7 padding (pad[i] != unpadding)")
+		}
+	}
+
+	return src[:(length - unpadding)], nil
+}
+func Sm4Cbc(key []byte, in []byte, mode bool) (out []byte, err error) {
+	if len(key) != BlockSize {
+		return nil, errors.New("SM4: invalid key size " + strconv.Itoa(len(key)))
+	}
+	var inData []byte
+	if mode {
+		inData = pkcs7Padding(in)
+	} else {
+		inData = in
+	}
+
+	iv := make([]byte, BlockSize)
+
+	out = make([]byte, len(inData))
+	c, err := NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+	if mode {
+		for i := 0; i < len(inData)/16; i++ {
+			in_tmp := xor(inData[i*16:i*16+16], iv)
+			out_tmp := make([]byte, 16)
+			c.Encrypt(out_tmp, in_tmp)
+			copy(out[i*16:i*16+16], out_tmp)
+			iv = out_tmp
+		}
+	} else {
+		for i := 0; i < len(inData)/16; i++ {
+			in_tmp := inData[i*16 : i*16+16]
+			out_tmp := make([]byte, 16)
+			c.Decrypt(out_tmp, in_tmp)
+			out_tmp = xor(out_tmp, iv)
+			copy(out[i*16:i*16+16], out_tmp)
+			iv = in_tmp
+		}
+		out, _ = pkcs7UnPadding(out)
+	}
+
+	return out, nil
+}
+func Sm4Ecb(key []byte, in []byte, mode bool) (out []byte, err error) {
+	if len(key) != BlockSize {
+		return nil, errors.New("SM4: invalid key size " + strconv.Itoa(len(key)))
+	}
+	var inData []byte
+	if mode {
+		inData = pkcs7Padding(in)
+	} else {
+		inData = in
+	}
+	out = make([]byte, len(inData))
+	c, err := NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+	if mode {
+		for i := 0; i < len(inData)/16; i++ {
+			in_tmp := inData[i*16 : i*16+16]
+			out_tmp := make([]byte, 16)
+			c.Encrypt(out_tmp, in_tmp)
+			copy(out[i*16:i*16+16], out_tmp)
+		}
+	} else {
+		for i := 0; i < len(inData)/16; i++ {
+			in_tmp := inData[i*16 : i*16+16]
+			out_tmp := make([]byte, 16)
+			c.Decrypt(out_tmp, in_tmp)
+			copy(out[i*16:i*16+16], out_tmp)
+		}
+		out, _ = pkcs7UnPadding(out)
+	}
+
+	return out, nil
 }
