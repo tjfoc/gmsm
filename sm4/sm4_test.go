@@ -64,6 +64,33 @@ func TestSM4(t *testing.T) {
 	if !testCompare(data, cbcDec) {
 		t.Errorf("sm4 self enc and dec failed")
 	}
+
+
+	cbcMsg, err = Sm4CFB(key, data, true)
+	if err != nil {
+		t.Errorf("sm4 enc error:%s", err)
+	}
+	fmt.Printf("cbcCFB = %x\n", cbcMsg)
+
+	cbcCfb, err := Sm4CFB(key, cbcMsg, false)
+	if err != nil {
+		t.Errorf("sm4 dec error:%s", err)
+		return
+	}
+	fmt.Printf("cbcCFB = %x\n", cbcCfb)
+
+	cbcMsg, err = Sm4OFB(key, data, true)
+	if err != nil {
+		t.Errorf("sm4 enc error:%s", err)
+	}
+	fmt.Printf("cbcOFB = %x\n", cbcMsg)
+
+	cbcOfc, err := Sm4OFB(key, cbcMsg, false)
+	if err != nil {
+		t.Errorf("sm4 dec error:%s", err)
+		return
+	}
+	fmt.Printf("cbcOFB = %x\n", cbcOfc)
 }
 
 func BenchmarkSM4(t *testing.B) {
@@ -121,3 +148,4 @@ func testCompare(key1, key2 []byte) bool {
 	}
 	return true
 }
+
