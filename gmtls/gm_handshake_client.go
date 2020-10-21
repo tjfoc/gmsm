@@ -1,17 +1,8 @@
-/*
-Copyright Suzhou Tongji Fintech Research Institute 2017 All Rights Reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// +build single_cert
 
 package gmtls
 
@@ -24,15 +15,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
+	"github.com/Hyperledger-TWGC/tjfco-gm/x509"
 	"io"
-	"net"
 	"strconv"
-	"strings"
-
-	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
+	"sync/atomic"
 )
 
-type clientHandshakeState struct {
+type clientHandshakeStateGM struct {
 	c            *Conn
 	serverHello  *serverHelloMsg
 	hello        *clientHelloMsg
@@ -42,62 +31,23 @@ type clientHandshakeState struct {
 	session      *ClientSessionState
 }
 
-// c.out.Mutex <= L; c.handshakeMutex <= L.
-func (c *Conn) clientHandshake() error {
-	if c.config == nil {
-		c.config = defaultConfig()
-	}
-
-	// This may be a renegotiation handshake, in which case some fields
-	// need to be reset.
-	c.didResume = false
-
-	if len(c.config.ServerName) == 0 && !c.config.InsecureSkipVerify {
-		return errors.New("tls: either ServerName or InsecureSkipVerify must be specified in the tls.Config")
-	}
-
-	nextProtosLength := 0
-	for _, proto := range c.config.NextProtos {
-		if l := len(proto); l == 0 || l > 255 {
-			return errors.New("tls: invalid NextProtos value")
-		} else {
-			nextProtosLength += 1 + l
-		}
-	}
-	if nextProtosLength > 0xffff {
-		return errors.New("tls: NextProtos values too large")
+func makeClientHelloGM(config *Config) (*clientHelloMsg, error) {
+	if len(config.ServerName) == 0 && !config.InsecureSkipVerify {
+		return nil, errors.New("tls: either ServerName or InsecureSkipVerify must be specified in the tls.Config")
 	}
 
 	hello := &clientHelloMsg{
-		vers:                         c.config.maxVersion(),
-		compressionMethods:           []uint8{compressionNone},
-		random:                       make([]byte, 32),
-		ocspStapling:                 true,
-		scts:                         true,
-		serverName:                   hostnameInSNI(c.config.ServerName),
-		supportedCurves:              c.config.curvePreferences(),
-		supportedPoints:              []uint8{pointFormatUncompressed},
-		nextProtoNeg:                 len(c.config.NextProtos) > 0,
-		secureRenegotiationSupported: true,
-		alpnProtocols:                c.config.NextProtos,
+		vers:               config.GMSupport.GetVersion(),
+		compressionMethods: []uint8{compressionNone},
+		random:             make([]byte, 32),
 	}
-
-	if c.handshakes > 0 {
-		hello.secureRenegotiation = c.clientFinished[:]
-	}
-
-	possibleCipherSuites := c.config.cipherSuites()
+	possibleCipherSuites := getCipherSuites(config)
 	hello.cipherSuites = make([]uint16, 0, len(possibleCipherSuites))
 
 NextCipherSuite:
 	for _, suiteId := range possibleCipherSuites {
-		for _, suite := range cipherSuites {
+		for _, suite := range config.GMSupport.cipherSuites() {
 			if suite.id != suiteId {
-				continue
-			}
-			// Don't advertise TLS 1.2-only cipher suites unless
-			// we're attempting TLS 1.2.
-			if hello.vers < VersionTLS12 && suite.flags&suiteTLS12 != 0 {
 				continue
 			}
 			hello.cipherSuites = append(hello.cipherSuites, suiteId)
@@ -105,67 +55,21 @@ NextCipherSuite:
 		}
 	}
 
-	_, err := io.ReadFull(c.config.rand(), hello.random)
+	_, err := io.ReadFull(config.rand(), hello.random)
 	if err != nil {
-		c.sendAlert(alertInternalError)
-		return errors.New("tls: short read from Rand: " + err.Error())
+		return nil, errors.New("tls: short read from Rand: " + err.Error())
 	}
 
-	if hello.vers >= VersionTLS12 {
-		hello.signatureAndHashes = supportedSignatureAlgorithms
-	}
+	return hello, nil
+}
 
-	var session *ClientSessionState
-	var cacheKey string
-	sessionCache := c.config.ClientSessionCache
-	if c.config.SessionTicketsDisabled {
-		sessionCache = nil
-	}
+// Does the handshake, either a full one or resumes old session.
+// Requires hs.c, hs.hello, and, optionally, hs.session to be set.
+func (hs *clientHandshakeStateGM) handshake() error {
+	c := hs.c
 
-	if sessionCache != nil {
-		hello.ticketSupported = true
-	}
-
-	// Session resumption is not allowed if renegotiating because
-	// renegotiation is primarily used to allow a client to send a client
-	// certificate, which would be skipped if session resumption occurred.
-	if sessionCache != nil && c.handshakes == 0 {
-		// Try to resume a previously negotiated TLS session, if
-		// available.
-		cacheKey = clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
-		candidateSession, ok := sessionCache.Get(cacheKey)
-		if ok {
-			// Check that the ciphersuite/version used for the
-			// previous session are still valid.
-			cipherSuiteOk := false
-			for _, id := range hello.cipherSuites {
-				if id == candidateSession.cipherSuite {
-					cipherSuiteOk = true
-					break
-				}
-			}
-
-			versOk := candidateSession.vers >= c.config.minVersion() &&
-				candidateSession.vers <= c.config.maxVersion()
-			if versOk && cipherSuiteOk {
-				session = candidateSession
-			}
-		}
-	}
-
-	if session != nil {
-		hello.sessionTicket = session.sessionTicket
-		// A random session ID is used to detect when the
-		// server accepted the ticket and is resuming a session
-		// (see RFC 5077).
-		hello.sessionId = make([]byte, 16)
-		if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
-			c.sendAlert(alertInternalError)
-			return errors.New("tls: short read from Rand: " + err.Error())
-		}
-	}
-
-	if _, err := c.writeRecord(recordTypeHandshake, hello.marshal()); err != nil {
+	// send ClientHello
+	if _, err := c.writeRecord(recordTypeHandshake, hs.hello.marshal()); err != nil {
 		return err
 	}
 
@@ -173,40 +77,28 @@ NextCipherSuite:
 	if err != nil {
 		return err
 	}
-	serverHello, ok := msg.(*serverHelloMsg)
-	if !ok {
+
+	var ok bool
+	if hs.serverHello, ok = msg.(*serverHelloMsg); !ok {
 		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(serverHello, msg)
+		return unexpectedMessageError(hs.serverHello, msg)
 	}
 
-	vers, ok := c.config.mutualVersion(serverHello.vers)
-	if !ok || vers < VersionTLS10 {
-		// TLS 1.0 is the minimum version supported as a client.
-		c.sendAlert(alertProtocolVersion)
-		return fmt.Errorf("tls: server selected unsupported protocol version %x", serverHello.vers)
-	}
-	c.vers = vers
-	c.haveVers = true
-
-	suite := mutualCipherSuite(hello.cipherSuites, serverHello.cipherSuite)
-	if suite == nil {
-		c.sendAlert(alertHandshakeFailure)
-		return errors.New("tls: server chose an unconfigured cipher suite")
+	if hs.serverHello.vers != VersionGMSSL {
+		hs.c.sendAlert(alertProtocolVersion)
+		return fmt.Errorf("tls: server selected unsupported protocol version %x, while expecting %x", hs.serverHello.vers, VersionGMSSL)
 	}
 
-	hs := &clientHandshakeState{
-		c:            c,
-		serverHello:  serverHello,
-		hello:        hello,
-		suite:        suite,
-		finishedHash: newFinishedHash(c.vers, suite),
-		session:      session,
+	if err = hs.pickCipherSuite(); err != nil {
+		return err
 	}
 
 	isResume, err := hs.processServerHello()
 	if err != nil {
 		return err
 	}
+
+	hs.finishedHash = newFinishedHashGM(hs.suite)
 
 	// No signatures of the handshake are needed in a resumption.
 	// Otherwise, in a full handshake, if we don't have any certificates
@@ -259,17 +151,24 @@ NextCipherSuite:
 		}
 	}
 
-	if sessionCache != nil && hs.session != nil && session != hs.session {
-		sessionCache.Put(cacheKey, hs.session)
-	}
-
+	c.ekm = ekmFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.hello.random, hs.serverHello.random)
 	c.didResume = isResume
-	c.handshakeComplete = true
-	c.cipherSuite = suite.id
+	atomic.StoreUint32(&c.handshakeStatus, 1)
+
 	return nil
 }
 
-func (hs *clientHandshakeState) doFullHandshake() error {
+func (hs *clientHandshakeStateGM) pickCipherSuite() error {
+	if hs.suite = mutualCipherSuiteGM(hs.hello.cipherSuites, hs.serverHello.cipherSuite); hs.suite == nil {
+		hs.c.sendAlert(alertHandshakeFailure)
+		return errors.New("tls: server chose an unconfigured cipher suite")
+	}
+
+	hs.c.cipherSuite = hs.suite.id
+	return nil
+}
+
+func (hs *clientHandshakeStateGM) doFullHandshake() error {
 	c := hs.c
 
 	msg, err := c.readHandshake()
@@ -281,6 +180,14 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(certMsg, msg)
 	}
+
+	// mod by syl only one cert
+	// Thanks to dual certificates mechanism, length of certificates in GMT0024 must great than 2
+	//if len(certMsg.certificates) < 2{
+	//	c.sendAlert(alertInsufficientSecurity)
+	//	return fmt.Errorf("tls: length of certificates in GMT0024 must great than 2")
+	//}
+
 	hs.finishedHash.Write(certMsg.marshal())
 
 	if c.handshakes == 0 {
@@ -293,6 +200,31 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 				c.sendAlert(alertBadCertificate)
 				return errors.New("tls: failed to parse certificate from server: " + err.Error())
 			}
+
+			// mod by syl below
+			//if cert.SignatureAlgorithm != x509.SM2WithSM3{
+			//	c.sendAlert(alertUnsupportedCertificate)
+			//	return fmt.Errorf("tls: SignatureAlgorithm of the certificate[%d] is not supported, actual:%s, expect:SM2WITHSM3", i, cert.SignatureAlgorithm.String())
+			//}
+			//if cert.PublicKeyAlgorithm != x509.SM2 {
+			//	c.sendAlert(alertUnsupportedCertificate)
+			//	return fmt.Errorf("tls: PublicKeyAlgorithm of the certificate[%d] is not supported, actual:%s, expect:SM2", i, []string{"unkown", "RSA", "DSA", "ECDSA", "SM2"}[int(cert.PublicKeyAlgorithm)])
+			//}
+			////cert[0] is for signature while cert[1] is for encipher, refer to  GMT0024
+			////check key usage
+			//switch i {
+			//case 0:
+			//	if cert.KeyUsage == 0 || (cert.KeyUsage & (x509.KeyUsageDigitalSignature | cert.KeyUsage&x509.KeyUsageContentCommitment)) == 0{
+			//		c.sendAlert(alertInsufficientSecurity)
+			//		return fmt.Errorf("tls: the keyusage of cert[0] does not exist or is not for KeyUsageDigitalSignature/KeyUsageContentCommitment, value:%d", cert.KeyUsage)
+			//	}
+			//case 1:
+			//	if cert.KeyUsage == 0 || (cert.KeyUsage & (x509.KeyUsageDataEncipherment | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement))==0{
+			//		c.sendAlert(alertInsufficientSecurity)
+			//		return fmt.Errorf("tls: the keyusage of cert[1] does not exist or is not for KeyUsageDataEncipherment/KeyUsageKeyEncipherment/KeyUsageKeyAgreement, value:%d", cert.KeyUsage)
+			//	}
+			//}
+
 			certs[i] = cert
 		}
 
@@ -303,13 +235,20 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 				DNSName:       c.config.ServerName,
 				Intermediates: x509.NewCertPool(),
 			}
+			if opts.Roots == nil {
+				opts.Roots = x509.NewCertPool()
+			}
 
+			for _, rootca := range getCAs() {
+				opts.Roots.AddCert(rootca)
+			}
 			for i, cert := range certs {
 				if i == 0 {
 					continue
 				}
 				opts.Intermediates.AddCert(cert)
 			}
+
 			c.verifiedChains, err = certs[0].Verify(opts)
 			if err != nil {
 				c.sendAlert(alertBadCertificate)
@@ -325,7 +264,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 
 		switch certs[0].PublicKey.(type) {
-		case *rsa.PublicKey, *ecdsa.PublicKey, *sm2.PublicKey:
+		case *sm2.PublicKey, *ecdsa.PublicKey, *rsa.PublicKey:
 			break
 		default:
 			c.sendAlert(alertUnsupportedCertificate)
@@ -346,29 +285,17 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 	}
 
-	if hs.serverHello.ocspStapling {
-		msg, err = c.readHandshake()
-		if err != nil {
-			return err
-		}
-		cs, ok := msg.(*certificateStatusMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(cs, msg)
-		}
-		hs.finishedHash.Write(cs.marshal())
-
-		if cs.statusType == statusTypeOCSP {
-			c.ocspResponse = cs.response
-		}
-	}
-
 	msg, err = c.readHandshake()
 	if err != nil {
 		return err
 	}
 
 	keyAgreement := hs.suite.ka(c.vers)
+	if ka, ok := keyAgreement.(*eccKeyAgreementGM); ok {
+		// mod by syl only one cert
+		//ka.encipherCert = c.peerCertificates[1]
+		ka.encipherCert = c.peerCertificates[0]
+	}
 
 	skx, ok := msg.(*serverKeyExchangeMsg)
 	if ok {
@@ -387,12 +314,12 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 	var chainToSend *Certificate
 	var certRequested bool
-	certReq, ok := msg.(*certificateRequestMsg)
+	certReq, ok := msg.(*certificateRequestMsgGM)
 	if ok {
 		certRequested = true
 		hs.finishedHash.Write(certReq.marshal())
 
-		if chainToSend, err = hs.getCertificate(certReq); err != nil {
+		if chainToSend, err = hs.getCertificate(certReq); err != nil || chainToSend.Certificate == nil {
 			c.sendAlert(alertInternalError)
 			return err
 		}
@@ -422,6 +349,8 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 	}
 
+	// mod by syl only one cert
+	//preMasterSecret, ckx, err := keyAgreement.generateClientKeyExchange(c.config, hs.hello, c.peerCertificates[1])
 	preMasterSecret, ckx, err := keyAgreement.generateClientKeyExchange(c.config, hs.hello, c.peerCertificates[0])
 	if err != nil {
 		c.sendAlert(alertInternalError)
@@ -435,9 +364,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 
 	if chainToSend != nil && len(chainToSend.Certificate) > 0 {
-		certVerify := &certificateVerifyMsg{
-			hasSignatureAndHash: c.vers >= VersionTLS12,
-		}
+		certVerify := &certificateVerifyMsg{}
 
 		key, ok := chainToSend.PrivateKey.(crypto.Signer)
 		if !ok {
@@ -445,28 +372,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			return fmt.Errorf("tls: client certificate private key of type %T does not implement crypto.Signer", chainToSend.PrivateKey)
 		}
 
-		var signatureType uint8
-		switch key.Public().(type) {
-		case *ecdsa.PublicKey, *sm2.PublicKey:
-			signatureType = signatureECDSA
-		case *rsa.PublicKey:
-			signatureType = signatureRSA
-		default:
-			c.sendAlert(alertInternalError)
-			return fmt.Errorf("tls: failed to sign handshake with client certificate: unknown client certificate key type: %T", key)
-		}
+		digest := hs.finishedHash.client.Sum(nil)
 
-		certVerify.signatureAndHash, err = hs.finishedHash.selectClientCertSignatureAlgorithm(certReq.signatureAndHashes, signatureType)
-		if err != nil {
-			c.sendAlert(alertInternalError)
-			return err
-		}
-		digest, hashFunc, err := hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash, hs.masterSecret)
-		if err != nil {
-			c.sendAlert(alertInternalError)
-			return err
-		}
-		certVerify.signature, err = key.Sign(c.config.rand(), digest, hashFunc)
+		certVerify.signature, err = key.Sign(c.config.rand(), digest, nil)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return err
@@ -489,7 +397,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	return nil
 }
 
-func (hs *clientHandshakeState) establishKeys() error {
+func (hs *clientHandshakeStateGM) establishKeys() error {
 	c := hs.c
 
 	clientMAC, serverMAC, clientKey, serverKey, clientIV, serverIV :=
@@ -511,14 +419,14 @@ func (hs *clientHandshakeState) establishKeys() error {
 	return nil
 }
 
-func (hs *clientHandshakeState) serverResumedSession() bool {
+func (hs *clientHandshakeStateGM) serverResumedSession() bool {
 	// If the server responded with the same sessionId then it means the
 	// sessionTicket is being used to resume a TLS session.
 	return hs.session != nil && hs.hello.sessionId != nil &&
 		bytes.Equal(hs.serverHello.sessionId, hs.hello.sessionId)
 }
 
-func (hs *clientHandshakeState) processServerHello() (bool, error) {
+func (hs *clientHandshakeStateGM) processServerHello() (bool, error) {
 	c := hs.c
 
 	if hs.serverHello.compressionMethod != compressionNone {
@@ -591,7 +499,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	return true, nil
 }
 
-func (hs *clientHandshakeState) readFinished(out []byte) error {
+func (hs *clientHandshakeStateGM) readFinished(out []byte) error {
 	c := hs.c
 
 	c.readRecord(recordTypeChangeCipherSpec)
@@ -620,7 +528,7 @@ func (hs *clientHandshakeState) readFinished(out []byte) error {
 	return nil
 }
 
-func (hs *clientHandshakeState) readSessionTicket() error {
+func (hs *clientHandshakeStateGM) readSessionTicket() error {
 	if !hs.serverHello.ticketSupported {
 		return nil
 	}
@@ -649,7 +557,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 	return nil
 }
 
-func (hs *clientHandshakeState) sendFinished(out []byte) error {
+func (hs *clientHandshakeStateGM) sendFinished(out []byte) error {
 	c := hs.c
 
 	if _, err := c.writeRecord(recordTypeChangeCipherSpec, []byte{1}); err != nil {
@@ -678,53 +586,24 @@ func (hs *clientHandshakeState) sendFinished(out []byte) error {
 	return nil
 }
 
-// tls11SignatureSchemes contains the signature schemes that we synthesise for
-// a TLS <= 1.1 connection, based on the supported certificate types.
-var tls11SignatureSchemes = []SignatureScheme{ECDSAWithP256AndSHA256, ECDSAWithP384AndSHA384, ECDSAWithP521AndSHA512, PKCS1WithSHA256, PKCS1WithSHA384, PKCS1WithSHA512, PKCS1WithSHA1}
+//// tls11SignatureSchemes contains the signature schemes that we synthesise for
+//// a TLS <= 1.1 connection, based on the supported certificate types.
+//var tls11SignatureSchemes = []SignatureScheme{ECDSAWithP256AndSHA256, ECDSAWithP384AndSHA384, ECDSAWithP521AndSHA512, PKCS1WithSHA256, PKCS1WithSHA384, PKCS1WithSHA512, PKCS1WithSHA1}
+//
+//const (
+//	// tls11SignatureSchemesNumECDSA is the number of initial elements of
+//	// tls11SignatureSchemes that use ECDSA.
+//	tls11SignatureSchemesNumECDSA = 3
+//	// tls11SignatureSchemesNumRSA is the number of trailing elements of
+//	// tls11SignatureSchemes that use RSA.
+//	tls11SignatureSchemesNumRSA = 4
+//)
 
-const (
-	// tls11SignatureSchemesNumECDSA is the number of initial elements of
-	// tls11SignatureSchemes that use ECDSA.
-	tls11SignatureSchemesNumECDSA = 3
-	// tls11SignatureSchemesNumRSA is the number of trailing elements of
-	// tls11SignatureSchemes that use RSA.
-	tls11SignatureSchemesNumRSA = 4
-)
-
-func (hs *clientHandshakeState) getCertificate(certReq *certificateRequestMsg) (*Certificate, error) {
+func (hs *clientHandshakeStateGM) getCertificate(certReq *certificateRequestMsgGM) (*Certificate, error) {
 	c := hs.c
-
-	var rsaAvail, ecdsaAvail bool
-	for _, certType := range certReq.certificateTypes {
-		switch certType {
-		case certTypeRSASign:
-			rsaAvail = true
-		case certTypeECDSASign:
-			ecdsaAvail = true
-		}
-	}
 
 	if c.config.GetClientCertificate != nil {
 		var signatureSchemes []SignatureScheme
-
-		if !certReq.hasSignatureAndHash {
-			// Prior to TLS 1.2, the signature schemes were not
-			// included in the certificate request message. In this
-			// case we use a plausible list based on the acceptable
-			// certificate types.
-			signatureSchemes = tls11SignatureSchemes
-			if !ecdsaAvail {
-				signatureSchemes = signatureSchemes[tls11SignatureSchemesNumECDSA:]
-			}
-			if !rsaAvail {
-				signatureSchemes = signatureSchemes[:len(signatureSchemes)-tls11SignatureSchemesNumRSA]
-			}
-		} else {
-			signatureSchemes = make([]SignatureScheme, 0, len(certReq.signatureAndHashes))
-			for _, sah := range certReq.signatureAndHashes {
-				signatureSchemes = append(signatureSchemes, SignatureScheme(sah.hash)<<8+SignatureScheme(sah.signature))
-			}
-		}
 
 		return c.config.GetClientCertificate(&CertificateRequestInfo{
 			AcceptableCAs:    certReq.certificateAuthorities,
@@ -748,9 +627,6 @@ func (hs *clientHandshakeState) getCertificate(certReq *certificateRequestMsg) (
 	// Issuer is in certReq.certificateAuthorities
 findCert:
 	for i, chain := range c.config.Certificates {
-		if !rsaAvail && !ecdsaAvail {
-			continue
-		}
 
 		for j, cert := range chain.Certificate {
 			x509Cert := chain.Leaf
@@ -765,8 +641,7 @@ findCert:
 			}
 
 			switch {
-			case rsaAvail && x509Cert.PublicKeyAlgorithm == x509.RSA:
-			case ecdsaAvail && x509Cert.PublicKeyAlgorithm == x509.ECDSA:
+			case x509Cert.PublicKeyAlgorithm == x509.SM2:
 			default:
 				continue findCert
 			}
@@ -787,49 +662,4 @@ findCert:
 
 	// No acceptable certificate found. Don't send a certificate.
 	return new(Certificate), nil
-}
-
-// clientSessionCacheKey returns a key used to cache sessionTickets that could
-// be used to resume previously negotiated TLS sessions with a server.
-func clientSessionCacheKey(serverAddr net.Addr, config *Config) string {
-	if len(config.ServerName) > 0 {
-		return config.ServerName
-	}
-	return serverAddr.String()
-}
-
-// mutualProtocol finds the mutual Next Protocol Negotiation or ALPN protocol
-// given list of possible protocols and a list of the preference order. The
-// first list must not be empty. It returns the resulting protocol and flag
-// indicating if the fallback case was reached.
-func mutualProtocol(protos, preferenceProtos []string) (string, bool) {
-	for _, s := range preferenceProtos {
-		for _, c := range protos {
-			if s == c {
-				return s, false
-			}
-		}
-	}
-
-	return protos[0], true
-}
-
-// hostnameInSNI converts name into an approriate hostname for SNI.
-// Literal IP addresses and absolute FQDNs are not permitted as SNI values.
-// See https://tools.ietf.org/html/rfc6066#section-3.
-func hostnameInSNI(name string) string {
-	host := name
-	if len(host) > 0 && host[0] == '[' && host[len(host)-1] == ']' {
-		host = host[1 : len(host)-1]
-	}
-	if i := strings.LastIndex(host, "%"); i > 0 {
-		host = host[:i]
-	}
-	if net.ParseIP(host) != nil {
-		return ""
-	}
-	if len(name) > 0 && name[len(name)-1] == '.' {
-		name = name[:len(name)-1]
-	}
-	return name
 }

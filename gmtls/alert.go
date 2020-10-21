@@ -50,6 +50,13 @@ const (
 	alertUserCanceled           alert = 90
 	alertNoRenegotiation        alert = 100
 	alertNoApplicationProtocol  alert = 120
+	//GMT0024
+	alertUnspporttedSite2Site   alert = 200
+	alertNoArea                 alert = 201
+	alertUnspportedAreaType     alert = 202
+	alertBadIBCParam            alert = 203
+	alertUnspportedIBCParam     alert = 204
+	alertIdentityNeed           alert = 205
 )
 
 var alertText = map[alert]string{
@@ -77,6 +84,13 @@ var alertText = map[alert]string{
 	alertUserCanceled:           "user canceled",
 	alertNoRenegotiation:        "no renegotiation",
 	alertNoApplicationProtocol:  "no application protocol",
+	//GMT0024
+	alertUnspporttedSite2Site:   "不支持site2site",
+	alertNoArea              :   "没有保护域",
+	alertUnspportedAreaType  :   "不支持的保护域类型",
+	alertBadIBCParam         :   "接收到一个无效的ibc公共参数",
+	alertUnspportedIBCParam  :   "不支持ibc参数中定义的信息",
+	alertIdentityNeed        :   "缺少对方的ibc标识",
 }
 
 func (e alert) String() string {

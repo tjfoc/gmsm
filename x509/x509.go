@@ -368,6 +368,7 @@ const (
 	RSA
 	DSA
 	ECDSA
+	SM2
 )
 
 // OIDs for signature algorithms

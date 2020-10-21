@@ -23,6 +23,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"errors"
+	"fmt"
 	"hash"
 )
 
@@ -192,19 +193,20 @@ func keysFromMasterSecret(version uint16, suite *cipherSuite, masterSecret, clie
 
 // lookupTLSHash looks up the corresponding crypto.Hash for a given
 // TLS hash identifier.
-func lookupTLSHash(hash uint8) (crypto.Hash, error) {
-	switch hash {
-	case hashSHA1:
+func lookupTLSHash(signatureAlgorithm SignatureScheme) (crypto.Hash, error) {
+	switch signatureAlgorithm {
+	case PKCS1WithSHA1, ECDSAWithSHA1:
 		return crypto.SHA1, nil
-	case hashSHA256:
+	case PKCS1WithSHA256, PSSWithSHA256, ECDSAWithP256AndSHA256:
 		return crypto.SHA256, nil
-	case hashSHA384:
+	case PKCS1WithSHA384, PSSWithSHA384, ECDSAWithP384AndSHA384:
 		return crypto.SHA384, nil
+	case PKCS1WithSHA512, PSSWithSHA512, ECDSAWithP521AndSHA512:
+		return crypto.SHA512, nil
 	default:
-		return 0, errors.New("tls: unsupported hash algorithm")
+		return 0, fmt.Errorf("tls: unsupported signature algorithm: %#04x", signatureAlgorithm)
 	}
 }
-
 func newFinishedHash(version uint16, cipherSuite *cipherSuite) finishedHash {
 	var buffer []byte
 	if version == VersionSSL30 || version >= VersionTLS12 {
@@ -253,7 +255,7 @@ func (h *finishedHash) Write(msg []byte) (n int, err error) {
 }
 
 func (h finishedHash) Sum() []byte {
-	if h.version >= VersionTLS12 {
+	if h.version >= VersionTLS12|| h.version == VersionGMSSL {
 		return h.client.Sum(nil)
 	}
 
@@ -321,59 +323,80 @@ func (h finishedHash) serverSum(masterSecret []byte) []byte {
 	return out
 }
 
-// selectClientCertSignatureAlgorithm returns a signatureAndHash to sign a
-// client's CertificateVerify with, or an error if none can be found.
-func (h finishedHash) selectClientCertSignatureAlgorithm(serverList []signatureAndHash, sigType uint8) (signatureAndHash, error) {
-	if h.version < VersionTLS12 {
-		// Nothing to negotiate before TLS 1.2.
-		return signatureAndHash{signature: sigType}, nil
-	}
-
-	for _, v := range serverList {
-		if v.signature == sigType && isSupportedSignatureAndHash(v, supportedSignatureAlgorithms) {
-			return v, nil
-		}
-	}
-	return signatureAndHash{}, errors.New("tls: no supported signature algorithm found for signing client certificate")
-}
 
 // hashForClientCertificate returns a digest, hash function, and TLS 1.2 hash
 // id suitable for signing by a TLS client certificate.
-func (h finishedHash) hashForClientCertificate(signatureAndHash signatureAndHash, masterSecret []byte) ([]byte, crypto.Hash, error) {
+func (h finishedHash) hashForClientCertificate(sigType uint8, hashAlg crypto.Hash, masterSecret []byte) ([]byte, error) {
 	if (h.version == VersionSSL30 || h.version >= VersionTLS12) && h.buffer == nil {
 		panic("a handshake hash for a client-certificate was requested after discarding the handshake buffer")
 	}
 
 	if h.version == VersionSSL30 {
-		if signatureAndHash.signature != signatureRSA {
-			return nil, 0, errors.New("tls: unsupported signature type for client certificate")
+		if sigType != signaturePKCS1v15 {
+			return nil, errors.New("tls: unsupported signature type for client certificate")
 		}
 
 		md5Hash := md5.New()
 		md5Hash.Write(h.buffer)
 		sha1Hash := sha1.New()
 		sha1Hash.Write(h.buffer)
-		return finishedSum30(md5Hash, sha1Hash, masterSecret, nil), crypto.MD5SHA1, nil
+		return finishedSum30(md5Hash, sha1Hash, masterSecret, nil), nil
 	}
 	if h.version >= VersionTLS12 {
-		hashAlg, err := lookupTLSHash(signatureAndHash.hash)
-		if err != nil {
-			return nil, 0, err
-		}
 		hash := hashAlg.New()
 		hash.Write(h.buffer)
-		return hash.Sum(nil), hashAlg, nil
+		return hash.Sum(nil), nil
 	}
 
-	if signatureAndHash.signature == signatureECDSA {
-		return h.server.Sum(nil), crypto.SHA1, nil
+	if sigType == signatureECDSA {
+		return h.server.Sum(nil), nil
 	}
 
-	return h.Sum(), crypto.MD5SHA1, nil
+	return h.Sum(), nil
 }
 
 // discardHandshakeBuffer is called when there is no more need to
 // buffer the entirety of the handshake messages.
 func (h *finishedHash) discardHandshakeBuffer() {
 	h.buffer = nil
+}
+
+// noExportedKeyingMaterial is used as a value of
+// ConnectionState.ekm when renegotation is enabled and thus
+// we wish to fail all key-material export requests.
+func noExportedKeyingMaterial(label string, context []byte, length int) ([]byte, error) {
+	return nil, errors.New("crypto/tls: ExportKeyingMaterial is unavailable when renegotiation is enabled")
+}
+
+// ekmFromMasterSecret generates exported keying material as defined in
+// https://tools.ietf.org/html/rfc5705.
+func ekmFromMasterSecret(version uint16, suite *cipherSuite, masterSecret, clientRandom, serverRandom []byte) func(string, []byte, int) ([]byte, error) {
+	return func(label string, context []byte, length int) ([]byte, error) {
+		switch label {
+		case "client finished", "server finished", "master secret", "key expansion":
+			// These values are reserved and may not be used.
+			return nil, fmt.Errorf("crypto/tls: reserved ExportKeyingMaterial label: %s", label)
+		}
+
+		seedLen := len(serverRandom) + len(clientRandom)
+		if context != nil {
+			seedLen += 2 + len(context)
+		}
+		seed := make([]byte, 0, seedLen)
+
+		seed = append(seed, clientRandom...)
+		seed = append(seed, serverRandom...)
+
+		if context != nil {
+			if len(context) >= 1<<16 {
+				return nil, fmt.Errorf("crypto/tls: ExportKeyingMaterial context too long")
+			}
+			seed = append(seed, byte(len(context)>>8), byte(len(context)))
+			seed = append(seed, context...)
+		}
+
+		keyMaterial := make([]byte, length)
+		prfForVersion(version, suite)(keyMaterial, masterSecret, []byte(label), seed)
+		return keyMaterial, nil
+	}
 }
