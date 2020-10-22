@@ -15,7 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
-	"github.com/Hyperledger-TWGC/tjfco-gm/x509"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 	"io"
 	"strconv"
 	"sync/atomic"
