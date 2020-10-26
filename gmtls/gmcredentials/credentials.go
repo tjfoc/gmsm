@@ -18,16 +18,14 @@ package gmcredentials
 import (
 	"errors"
 	"fmt"
-	gmtls "github.com/Hyperledger-TWGC/tjfoc-gm/gmtls"
 	"io/ioutil"
 	"net"
 	"strings"
 
+	"github.com/Hyperledger-TWGC/tjfoc-gm/gmtls"
 	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
-
-	"google.golang.org/grpc/credentials"
-
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -155,7 +153,7 @@ func NewTLS(c *gmtls.Config) credentials.TransportCredentials {
 // serverNameOverride is for testing only. If set to a non empty string,
 // it will override the virtual host name of authority (e.g. :authority header field) in requests.
 func NewClientTLSFromCert(cp *x509.CertPool, serverNameOverride string) credentials.TransportCredentials {
-	return NewTLS(&gmtls.Config{ServerName: serverNameOverride, RootCAs: cp})
+	return NewTLS(&gmtls.Config{GMSupport: &gmtls.GMSupport{}, ServerName: serverNameOverride, RootCAs: cp})
 }
 
 // NewClientTLSFromFile constructs TLS credentials from the input certificate file for client.

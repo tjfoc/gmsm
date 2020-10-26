@@ -139,7 +139,7 @@ func cipherSM4(key, iv []byte, isRead bool) interface{} {
 
 // macSHA1 returns a macFunction for the given protocol version.
 func macSM3(version uint16, key []byte) macFunction {
-	return tls10MAC{hmac.New(newConstantTimeHash(sm3.New), key)}
+	return tls10MAC{hmac.New(sm3.New, key)}
 }
 
 //used for adapt the demand of finishHash write

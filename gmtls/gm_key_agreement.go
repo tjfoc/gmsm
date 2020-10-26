@@ -7,6 +7,7 @@ package gmtls
 import (
 	"bytes"
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/asn1"
 	"errors"
@@ -346,12 +347,12 @@ func (ka *eccKeyAgreementGM) processClientKeyExchange(config *Config, cert *Cert
 	cipher := ckx.ciphertext[2:]
 
 	// mod by syl due to offical tls
-	priv, ok := cert.PrivateKey.(crypto.Decrypter)
+	priv, ok := cert.PrivateKey.(*sm2.PrivateKey)
 	if !ok {
 		return nil, errors.New("tls: certificate private key does not implement crypto.Decrypter")
 	}
 	//plain, err := cert.EncipherPrivateKey.Decrypt(config.rand(), cipher, nil)
-	plain, err := priv.Decrypt(config.rand(), cipher, nil)
+	plain, err := sm2.Decrypt(priv, cipher)
 	if err != nil {
 		return nil, err
 	}
@@ -377,10 +378,11 @@ func (ka *eccKeyAgreementGM) processServerKeyExchange(config *Config, clientHell
 	digest := ka.hashForServerKeyExchange(clientHello.random, serverHello.random, ka.encipherCert.Raw)
 
 	//verify
-	pubKey, ok := cert.PublicKey.(*sm2.PublicKey)
-	if !ok {
+	pubKey, _ := cert.PublicKey.(*ecdsa.PublicKey)
+	if pubKey.Curve != sm2.P256Sm2() {
 		return errors.New("tls: sm2 signing requires a sm2 public key")
 	}
+
 	ecdsaSig := new(ecdsaSignature)
 	rest, err := asn1.Unmarshal(sig, ecdsaSig)
 	if err != nil {
@@ -392,9 +394,17 @@ func (ka *eccKeyAgreementGM) processServerKeyExchange(config *Config, clientHell
 	if ecdsaSig.R.Sign() <= 0 || ecdsaSig.S.Sign() <= 0 {
 		return errors.New("tls: processServerKeyExchange: sm2 signature contained zero or negative values")
 	}
-	if !pubKey.Verify(digest,sig) {
+
+	sm2PubKey := sm2.PublicKey{
+		Curve: pubKey.Curve,
+		X:     pubKey.X,
+		Y:     pubKey.Y,
+	}
+
+	if !sm2PubKey.Verify(digest, sig) {
 		return errors.New("tls: processServerKeyExchange: sm2 verification failure")
 	}
+
 	return nil
 }
 
@@ -417,8 +427,9 @@ func (ka *eccKeyAgreementGM) generateClientKeyExchange(config *Config, clientHel
 	if err != nil {
 		return nil, nil, err
 	}
-
-	encrypted, err := sm2.Encrypt(ka.encipherCert.PublicKey.(*sm2.PublicKey), preMasterSecret, config.rand())
+	pubKey := ka.encipherCert.PublicKey.(*ecdsa.PublicKey)
+	sm2PubKey := &sm2.PublicKey{Curve: pubKey.Curve, X: pubKey.X, Y: pubKey.Y}
+	encrypted, err := sm2.Encrypt(sm2PubKey, preMasterSecret, config.rand())
 	if err != nil {
 		return nil, nil, err
 	}
