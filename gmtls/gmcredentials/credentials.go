@@ -18,7 +18,7 @@ package gmcredentials
 import (
 	"errors"
 	"fmt"
-	gmtls "github.com/Hyperledger-TWGC/tjfoc-gm/tls"
+	gmtls "github.com/Hyperledger-TWGC/tjfoc-gm/gmtls"
 	"io/ioutil"
 	"net"
 	"strings"

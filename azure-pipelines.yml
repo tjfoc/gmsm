@@ -15,9 +15,15 @@ steps:
   - script: go build -v ./sm2
   - script: go build -v ./sm3
   - script: go build -v ./sm4
+  - script: go build -v ./x509
+  - script: go build -v ./gmtls/gmcredentials
+  - script: go build -v ./gmtls/gmcredentials/echo
   - script: go mod vendor
   - script: go vet ./sm2
   - script: go vet ./sm3
   - script: go vet ./sm4
+  - script: go vet ./x509
+  - script: go vet ./gmtls/gmcredentials
   - script: go test -v ./...
     displayName: go test recursive
+ 
