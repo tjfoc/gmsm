@@ -102,13 +102,13 @@ func NewCipher(key []byte) (cipher.Block, error)
 ### 代码示例
 
 ```Go
-    priv, err := sm2.GenerateKey() // 生成密钥对
+    priv, err := sm2.GenerateKey(rand.Reader) // 生成密钥对
     if err != nil {
     	log.Fatal(err)
     }
     msg := []byte("Tongji Fintech Research Institute")
     pub := &priv.PublicKey
-    ciphertxt, err := pub.Encrypt(msg)
+    ciphertxt, err := pub.Encrypt(msg,rand.Reader)
     if err != nil {
     	log.Fatal(err)
     }
@@ -121,11 +121,11 @@ func NewCipher(key []byte) (cipher.Block, error)
         log.Fatal("原文不匹配")
     }
 
-    r,s,err := sm2.Sign(priv, msg)
+   sign,err := priv.Sign(rand.Reader, msg, nil)
     if err != nil {
     	log.Fatal(err)
     }
-    isok := sm2.Verify(pub,msg,r,s)
+    isok := pubKey.Verify(msg, sign)
     fmt.Printf("Verified: %v\n", isok)
 ```
 
@@ -134,25 +134,25 @@ func NewCipher(key []byte) (cipher.Block, error)
 #### GenerateKey
 生成随机秘钥。
 ```Go
-func GenerateKey() (*PrivateKey, error) 
+func GenerateKey(rand.Reader) (*PrivateKey, error) 
 ```
 
 #### Sign
 用私钥签名数据，成功返回以两个大数表示的签名结果，否则返回错误。
 ```Go
-func Sign(priv *PrivateKey, hash []byte) (r, s *big.Int, err error)
+func SignSign(random io.Reader, msg []byte, signer crypto.SignerOpts) (signature[]byte, err error)
 ```
 
 #### Verify
 用公钥验证数据签名, 验证成功返回True，否则返回False。
 ```Go
-func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool 
+func Verify(pub *PublicKey, msg []byte, sign []byte)) bool 
 ```
 
 #### Encrypt
 用公钥加密数据,成功返回密文错误，否则返回错误。
 ```Go
-func Encrypt(pub *PublicKey, data []byte) ([]byte, error) 
+func Encrypt(pub *PublicKey, data []byte, random io.Reader) ([]byte, error) 
 ```
 
 #### Decrypt
