@@ -24,6 +24,7 @@ import (
 	"crypto/sha512"
 	"errors"
 	"fmt"
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm3"
 	"hash"
 )
 
@@ -133,6 +134,10 @@ var keyExpansionLabel = []byte("key expansion")
 var clientFinishedLabel = []byte("client finished")
 var serverFinishedLabel = []byte("server finished")
 
+func prfAndHashForGM() func(result, secret, label, seed []byte) {
+	return prf12(sm3.New)
+}
+
 func prfAndHashForVersion(version uint16, suite *cipherSuite) (func(result, secret, label, seed []byte), crypto.Hash) {
 	switch version {
 	case VersionSSL30:
@@ -150,7 +155,12 @@ func prfAndHashForVersion(version uint16, suite *cipherSuite) (func(result, secr
 }
 
 func prfForVersion(version uint16, suite *cipherSuite) func(result, secret, label, seed []byte) {
-	prf, _ := prfAndHashForVersion(version, suite)
+	var prf func(result, secret, label, seed []byte)
+	if version == VersionGMSSL {
+		prf = prfAndHashForGM()
+	} else {
+		prf, _ = prfAndHashForVersion(version, suite)
+	}
 	return prf
 }
 
@@ -213,9 +223,16 @@ func newFinishedHash(version uint16, cipherSuite *cipherSuite) finishedHash {
 		buffer = []byte{}
 	}
 
-	prf, hash := prfAndHashForVersion(version, cipherSuite)
-	if hash != 0 {
-		return finishedHash{hash.New(), hash.New(), nil, nil, buffer, version, prf}
+	var prf func(result, secret, label, seed []byte)
+
+	if version == VersionGMSSL {
+		prf = prfAndHashForGM()
+		return finishedHash{sm3.New(), sm3.New(), nil, nil, buffer, version, prf}
+	} else {
+		prf, hash := prfAndHashForVersion(version, cipherSuite)
+		if hash != 0 {
+			return finishedHash{hash.New(), hash.New(), nil, nil, buffer, version, prf}
+		}
 	}
 
 	return finishedHash{sha1.New(), sha1.New(), md5.New(), md5.New(), buffer, version, prf}
@@ -255,7 +272,7 @@ func (h *finishedHash) Write(msg []byte) (n int, err error) {
 }
 
 func (h finishedHash) Sum() []byte {
-	if h.version >= VersionTLS12|| h.version == VersionGMSSL {
+	if h.version >= VersionTLS12 || h.version == VersionGMSSL {
 		return h.client.Sum(nil)
 	}
 
@@ -322,7 +339,6 @@ func (h finishedHash) serverSum(masterSecret []byte) []byte {
 	h.prf(out, masterSecret, serverFinishedLabel, h.Sum())
 	return out
 }
-
 
 // hashForClientCertificate returns a digest, hash function, and TLS 1.2 hash
 // id suitable for signing by a TLS client certificate.

@@ -199,7 +199,8 @@ func (hs *clientHandshakeStateGM) doFullHandshake() error {
 				return errors.New("tls: failed to parse certificate from server: " + err.Error())
 			}
 
-			if _, ok = cert.PublicKey.(*sm2.PublicKey); !ok {
+			pubKey, _ := cert.PublicKey.(*ecdsa.PublicKey)
+			if pubKey.Curve != sm2.P256Sm2() {
 				c.sendAlert(alertUnsupportedCertificate)
 				return fmt.Errorf("tls: pubkey type of cert is error, expect sm2.publicKey")
 			}
@@ -630,9 +631,16 @@ findCert:
 				}
 			}
 
-			switch {
-			case x509Cert.PublicKeyAlgorithm == x509.SM2:
-			default:
+			var isGMCert bool
+
+			if x509Cert.PublicKeyAlgorithm == x509.ECDSA {
+				pubKey, ok := x509Cert.PublicKey.(*ecdsa.PublicKey)
+				if ok && pubKey.Curve == sm2.P256Sm2(){
+					isGMCert = true
+				}
+			}
+
+			if !isGMCert {
 				continue findCert
 			}
 

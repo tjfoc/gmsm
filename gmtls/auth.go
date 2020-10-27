@@ -100,7 +100,16 @@ func verifyHandshakeSignature(sigType uint8, pubkey crypto.PublicKey, hashFunc c
 		if ecdsaSig.R.Sign() <= 0 || ecdsaSig.S.Sign() <= 0 {
 			return errors.New("tls: ECDSA signature contained zero or negative values")
 		}
-		if !ecdsa.Verify(pubKey, digest, ecdsaSig.R, ecdsaSig.S) {
+		if pubKey.Curve == sm2.P256Sm2() {
+			sm2Public := sm2.PublicKey{
+				Curve: pubKey.Curve,
+				X:     pubKey.X,
+				Y:     pubKey.Y,
+			}
+			if !sm2Public.Verify(digest, sig) {
+				return errors.New("tls: SM2 verification failure")
+			}
+		} else if !ecdsa.Verify(pubKey, digest, ecdsaSig.R, ecdsaSig.S) {
 			return errors.New("tls: ECDSA verification failure")
 		}
 	case signaturePKCS1v15:

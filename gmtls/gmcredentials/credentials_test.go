@@ -27,15 +27,22 @@ func (s *server) Echo(ctx context.Context, req *echo.EchoRequest) (*echo.EchoRes
 	return &echo.EchoResponse{Result: req.Req}, nil
 }
 
-const ca = "testdata/ca.pem"
-const certs = "testdata/caV2.pem"
-const certskey = "testdata/caKeyV2.pem"
+const ca = "testdata/ca.cert"
+const signCert = "testdata/sign.cert"
+const signKey = "testdata/sign.key"
+const encryptCert = "testdata/encrypt.cert"
+const encryptKey = "testdata/encrypt.key"
 
-const admin = "testdata/adminV2.pem"
-const adminkey = "testdata/adminKeyV2.pem"
+const userCert = "testdata/user.cert"
+const userKey = "testdata/user.key"
 
 func serverRun() {
-	cert, err := gmtls.LoadX509KeyPair(certs, certskey)
+	signCert, err := gmtls.LoadX509KeyPair(signCert, signKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	encryptCert, err := gmtls.LoadX509KeyPair(encryptCert, encryptKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,8 +57,9 @@ func serverRun() {
 		log.Fatalf("fail to listen: %v", err)
 	}
 	creds := NewTLS(&gmtls.Config{
+		GMSupport:    &gmtls.GMSupport{},
 		ClientAuth:   gmtls.RequireAndVerifyClientCert,
-		Certificates: []gmtls.Certificate{cert},
+		Certificates: []gmtls.Certificate{signCert, encryptCert},
 		ClientCAs:    certPool,
 	})
 	s := grpc.NewServer(grpc.Creds(creds))
@@ -63,7 +71,7 @@ func serverRun() {
 }
 
 func clientRun() {
-	cert, err := gmtls.LoadX509KeyPair(admin, adminkey)
+	cert, err := gmtls.LoadX509KeyPair(userCert, userKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,7 +82,8 @@ func clientRun() {
 	}
 	certPool.AppendCertsFromPEM(cacert)
 	creds := NewTLS(&gmtls.Config{
-		ServerName:   "test@87",
+		GMSupport:    &gmtls.GMSupport{},
+		ServerName:   "test.example.com",
 		Certificates: []gmtls.Certificate{cert},
 		RootCAs:      certPool,
 		ClientAuth:   gmtls.RequireAndVerifyClientCert,
