@@ -10,7 +10,7 @@ import (
 
 
 
-func ReadKeyFromPem(FileName string, pwd []byte) (SM4Key, error) {
+func ReadKeyFromPemFile(FileName string, pwd []byte) (SM4Key, error) {
 	data, err := ioutil.ReadFile(FileName)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func ReadKeyFromPem(FileName string, pwd []byte) (SM4Key, error) {
 	return block.Bytes, nil
 }
 
-func WriteKeyToPem(FileName string, key SM4Key, pwd []byte) error {
+func WriteKeyToPemFile(FileName string, key SM4Key, pwd []byte) error {
 	var block *pem.Block
 	var err error
 	if pwd != nil {

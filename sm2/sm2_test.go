@@ -34,7 +34,7 @@ func TestSm2(t *testing.T) {
 	fmt.Printf("%v\n", priv.Curve.IsOnCurve(priv.X, priv.Y)) // 验证是否为sm2的曲线
 	pub := &priv.PublicKey
 	msg := []byte("123456")
-	d0, err := pub.Encrypt(msg, nil)
+	d0, err := pub.Encrypt(msg, rand.Reader)
 	if err != nil {
 		fmt.Printf("Error: failed to encrypt %s: %v\n", msg, err)
 		return
