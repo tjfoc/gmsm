@@ -21,9 +21,11 @@ package sm4
 import (
 	"bytes"
 	"crypto/cipher"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"strconv"
-
 )
 
 const BlockSize = 16
@@ -363,7 +365,7 @@ func Sm4Ecb(key []byte, in []byte, mode bool) (out []byte, err error) {
 //密码反馈模式（Cipher FeedBack (CFB)）
 //https://blog.csdn.net/zy_strive_2012/article/details/102520356
 //https://blog.csdn.net/sinat_23338865/article/details/72869841
-func Sm4CFB(key []byte, in []byte, mode bool) (out []byte, err error){
+func Sm4CFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 	if len(key) != BlockSize {
 		return nil, errors.New("SM4: invalid key size " + strconv.Itoa(len(key)))
 	}
@@ -381,35 +383,35 @@ func Sm4CFB(key []byte, in []byte, mode bool) (out []byte, err error){
 		panic(err)
 	}
 
-	K :=make([]byte,BlockSize)
-	cipherBlock := make([]byte,BlockSize)
-	plainBlock := make([]byte,BlockSize)
+	K := make([]byte, BlockSize)
+	cipherBlock := make([]byte, BlockSize)
+	plainBlock := make([]byte, BlockSize)
 	if mode { //加密
 		for i := 0; i < len(inData)/16; i++ {
-			if(i==0){
-				c.Encrypt(K,iv)
-				cipherBlock = xor(K[:BlockSize],inData[i*16 : i*16+16] )
+			if i == 0 {
+				c.Encrypt(K, iv)
+				cipherBlock = xor(K[:BlockSize], inData[i*16:i*16+16])
 				copy(out[i*16:i*16+16], cipherBlock)
 				//copy(cipherBlock,out_tmp)
 				continue
 			}
-			c.Encrypt(K,cipherBlock)
-			cipherBlock = xor(K[:BlockSize],inData[i*16 : i*16+16] )
+			c.Encrypt(K, cipherBlock)
+			cipherBlock = xor(K[:BlockSize], inData[i*16:i*16+16])
 			copy(out[i*16:i*16+16], cipherBlock)
 			//copy(cipherBlock,out_tmp)
 		}
 
-	}else{ //解密
+	} else { //解密
 		var i int = 0
 		for ; i < len(inData)/16; i++ {
-			if(i==0){
-				c.Encrypt(K,iv)  //这里是加密，而不是调用解密方法Decrypt
-				plainBlock = xor(K[:BlockSize],inData[i*16 : i*16+16] )//获取明文分组
+			if i == 0 {
+				c.Encrypt(K, iv)                                      //这里是加密，而不是调用解密方法Decrypt
+				plainBlock = xor(K[:BlockSize], inData[i*16:i*16+16]) //获取明文分组
 				copy(out[i*16:i*16+16], plainBlock)
 				continue
 			}
-			c.Encrypt(K,inData[(i-1)*16 : (i-1)*16+16])
-			plainBlock = xor(K[:BlockSize],inData[i*16 : i*16+16] ) //获取明文分组
+			c.Encrypt(K, inData[(i-1)*16:(i-1)*16+16])
+			plainBlock = xor(K[:BlockSize], inData[i*16:i*16+16]) //获取明文分组
 			copy(out[i*16:i*16+16], plainBlock)
 
 		}
@@ -441,41 +443,82 @@ func Sm4OFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 		panic(err)
 	}
 
-	K :=make([]byte,BlockSize)
-	cipherBlock := make([]byte,BlockSize)
-	plainBlock := make([]byte,BlockSize)
-	shiftIV := make([]byte,BlockSize)
+	K := make([]byte, BlockSize)
+	cipherBlock := make([]byte, BlockSize)
+	plainBlock := make([]byte, BlockSize)
+	shiftIV := make([]byte, BlockSize)
 	if mode { //加密
 		for i := 0; i < len(inData)/16; i++ {
-			if(i==0){
-				c.Encrypt(K,iv)
-				cipherBlock = xor(K[:BlockSize],inData[i*16 : i*16+16] )
+			if i == 0 {
+				c.Encrypt(K, iv)
+				cipherBlock = xor(K[:BlockSize], inData[i*16:i*16+16])
 				copy(out[i*16:i*16+16], cipherBlock)
-				copy(shiftIV,K[:BlockSize])
+				copy(shiftIV, K[:BlockSize])
 				continue
 			}
-			c.Encrypt(K,shiftIV)
-			cipherBlock = xor(K[:BlockSize],inData[i*16 : i*16+16] )
+			c.Encrypt(K, shiftIV)
+			cipherBlock = xor(K[:BlockSize], inData[i*16:i*16+16])
 			copy(out[i*16:i*16+16], cipherBlock)
-			copy(shiftIV,K[:BlockSize])
+			copy(shiftIV, K[:BlockSize])
 		}
 
-	}else{ //解密
+	} else { //解密
 		for i := 0; i < len(inData)/16; i++ {
-			if(i==0){
-				c.Encrypt(K,iv)  //这里是加密，而不是调用解密方法Decrypt
-				plainBlock = xor(K[:BlockSize],inData[i*16 : i*16+16] )//获取明文分组
+			if i == 0 {
+				c.Encrypt(K, iv)                                      //这里是加密，而不是调用解密方法Decrypt
+				plainBlock = xor(K[:BlockSize], inData[i*16:i*16+16]) //获取明文分组
 				copy(out[i*16:i*16+16], plainBlock)
-				copy(shiftIV,K[:BlockSize])
+				copy(shiftIV, K[:BlockSize])
 				continue
 			}
-			c.Encrypt(K,shiftIV)
-			plainBlock = xor(K[:BlockSize],inData[i*16 : i*16+16] ) //获取明文分组
+			c.Encrypt(K, shiftIV)
+			plainBlock = xor(K[:BlockSize], inData[i*16:i*16+16]) //获取明文分组
 			copy(out[i*16:i*16+16], plainBlock)
-			copy(shiftIV,K[:BlockSize])
+			copy(shiftIV, K[:BlockSize])
 		}
 		out, _ = pkcs7UnPadding(out)
 	}
 
 	return out, nil
+}
+
+func ReadKeyFromMem(data []byte, pwd []byte) (SM4Key, error) {
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return nil, errors.New("SM4: pem decode failed")
+	}
+	if x509.IsEncryptedPEMBlock(block) {
+		if block.Type != "SM4 ENCRYPTED KEY" {
+			return nil, errors.New("SM4: unknown type")
+		}
+		if pwd == nil {
+			return nil, errors.New("SM4: need passwd")
+		}
+		data, err := x509.DecryptPEMBlock(block, pwd)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	if block.Type != "SM4 KEY" {
+		return nil, errors.New("SM4: unknown type")
+	}
+	return block.Bytes, nil
+}
+
+func WriteKeytoMem(key SM4Key, pwd []byte) ([]byte, error) {
+	if pwd != nil {
+		block, err := x509.EncryptPEMBlock(rand.Reader,
+			"SM4 ENCRYPTED KEY", key, pwd, x509.PEMCipherAES256)
+		if err != nil {
+			return nil, err
+		}
+		return pem.EncodeToMemory(block), nil
+	} else {
+		block := &pem.Block{
+			Type:  "SM4 KEY",
+			Bytes: key,
+		}
+		return pem.EncodeToMemory(block), nil
+	}
 }
