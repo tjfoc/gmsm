@@ -93,9 +93,14 @@ func ReadCertificateFromPem(certPem []byte) (*Certificate, error) {
 	return ParseCertificate(block.Bytes)
 }
 
-func CreateCertificate(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
+func CreateCertificate(template, parent *Certificate, publicKey, privateKey interface{}) ([]byte, error) {
 	if template.SerialNumber == nil {
 		return nil, errors.New("x509: no SerialNumber given")
+	}
+
+	privKey, ok := privateKey.(crypto.Signer)
+	if !ok {
+		return nil, errors.New("x509: certificate private key does not implement crypto.Signer")
 	}
 
 	hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(privKey.Public(), template.SignatureAlgorithm)
@@ -103,7 +108,7 @@ func CreateCertificate(template, parent *Certificate, pubKey *sm2.PublicKey, pri
 		return nil, err
 	}
 
-	publicKeyBytes, publicKeyAlgorithm, err := marshalPublicKey(pubKey)
+	publicKeyBytes, publicKeyAlgorithm, err := marshalPublicKey(publicKey)
 	if err != nil {
 		return nil, err
 	}
