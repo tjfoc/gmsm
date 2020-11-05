@@ -93,7 +93,7 @@ func ReadCertificateFromPem(certPem []byte) (*Certificate, error) {
 	return ParseCertificate(block.Bytes)
 }
 
-func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
+func CreateCertificate(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
 	if template.SerialNumber == nil {
 		return nil, errors.New("x509: no SerialNumber given")
 	}
@@ -175,7 +175,11 @@ func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey
 		signatureAlgorithm,
 		asn1.BitString{Bytes: signature, BitLength: len(signature) * 8},
 	})
+	return der, err
+}
 
+func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
+	der, err := CreateCertificate(template, parent, pubKey, privKey)
 	if err != nil {
 		return nil, err
 	}
