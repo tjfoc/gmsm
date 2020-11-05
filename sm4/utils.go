@@ -8,13 +8,7 @@ import (
 	"io/ioutil"
 )
 
-
-
-func ReadKeyFromPemFile(FileName string, pwd []byte) (SM4Key, error) {
-	data, err := ioutil.ReadFile(FileName)
-	if err != nil {
-		return nil, err
-	}
+func ReadKeyFromMem(data []byte, pwd []byte) (SM4Key, error) {
 	block, _ := pem.Decode(data)
 	if block == nil {
 		return nil, errors.New("SM4: pem decode failed")
@@ -36,6 +30,31 @@ func ReadKeyFromPemFile(FileName string, pwd []byte) (SM4Key, error) {
 		return nil, errors.New("SM4: unknown type")
 	}
 	return block.Bytes, nil
+}
+
+func ReadKeyFromPemFile(FileName string, pwd []byte) (SM4Key, error) {
+	data, err := ioutil.ReadFile(FileName)
+	if err != nil {
+		return nil, err
+	}
+	return ReadKeyFromMem(data, pwd)
+}
+
+func WriteKeyToMem(key SM4Key, pwd []byte) ([]byte, error) {
+	if pwd != nil {
+		block, err := x509.EncryptPEMBlock(rand.Reader,
+			"SM4 ENCRYPTED KEY", key, pwd, x509.PEMCipherAES256)
+		if err != nil {
+			return nil, err
+		}
+		return pem.EncodeToMemory(block), nil
+	} else {
+		block := &pem.Block{
+			Type:  "SM4 KEY",
+			Bytes: key,
+		}
+		return pem.EncodeToMemory(block), nil
+	}
 }
 
 func WriteKeyToPemFile(FileName string, key SM4Key, pwd []byte) error {

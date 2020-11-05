@@ -21,9 +21,6 @@ package sm4
 import (
 	"bytes"
 	"crypto/cipher"
-	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"strconv"
 )
@@ -480,45 +477,4 @@ func Sm4OFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 	}
 
 	return out, nil
-}
-
-func ReadKeyFromMem(data []byte, pwd []byte) (SM4Key, error) {
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, errors.New("SM4: pem decode failed")
-	}
-	if x509.IsEncryptedPEMBlock(block) {
-		if block.Type != "SM4 ENCRYPTED KEY" {
-			return nil, errors.New("SM4: unknown type")
-		}
-		if pwd == nil {
-			return nil, errors.New("SM4: need passwd")
-		}
-		data, err := x509.DecryptPEMBlock(block, pwd)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	}
-	if block.Type != "SM4 KEY" {
-		return nil, errors.New("SM4: unknown type")
-	}
-	return block.Bytes, nil
-}
-
-func WriteKeytoMem(key SM4Key, pwd []byte) ([]byte, error) {
-	if pwd != nil {
-		block, err := x509.EncryptPEMBlock(rand.Reader,
-			"SM4 ENCRYPTED KEY", key, pwd, x509.PEMCipherAES256)
-		if err != nil {
-			return nil, err
-		}
-		return pem.EncodeToMemory(block), nil
-	} else {
-		block := &pem.Block{
-			Type:  "SM4 KEY",
-			Bytes: key,
-		}
-		return pem.EncodeToMemory(block), nil
-	}
 }
