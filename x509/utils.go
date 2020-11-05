@@ -93,6 +93,20 @@ func ReadCertificateFromPem(certPem []byte) (*Certificate, error) {
 	return ParseCertificate(block.Bytes)
 }
 
+// CreateCertificate creates a new certificate based on a template. The
+// following members of template are used: SerialNumber, Subject, NotBefore,
+// NotAfter, KeyUsage, ExtKeyUsage, UnknownExtKeyUsage, BasicConstraintsValid,
+// IsCA, MaxPathLen, SubjectKeyId, DNSNames, PermittedDNSDomainsCritical,
+// PermittedDNSDomains, SignatureAlgorithm.
+//
+// The certificate is signed by parent. If parent is equal to template then the
+// certificate is self-signed. The parameter pub is the public key of the
+// signee and priv is the private key of the signer.
+//
+// The returned slice is the certificate in DER encoding.
+//
+// All keys types that are implemented via crypto.Signer are supported (This
+// includes *rsa.PublicKey and *ecdsa.PublicKey.)
 func CreateCertificate(template, parent *Certificate, publicKey, privateKey interface{}) ([]byte, error) {
 	if template.SerialNumber == nil {
 		return nil, errors.New("x509: no SerialNumber given")
@@ -174,15 +188,17 @@ func CreateCertificate(template, parent *Certificate, publicKey, privateKey inte
 	if err != nil {
 		return nil, err
 	}
-	der, err := asn1.Marshal(certificate{
+	return asn1.Marshal(certificate{
 		nil,
 		c,
 		signatureAlgorithm,
 		asn1.BitString{Bytes: signature, BitLength: len(signature) * 8},
 	})
-	return der, err
 }
 
+// CreateCertificateToPem creates a new certificate based on a template and
+// encodes it to PEM format. It uses CreateCertificate to create certificate
+// and returns its PEM format.
 func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
 	der, err := CreateCertificate(template, parent, pubKey, privKey)
 	if err != nil {
