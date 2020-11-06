@@ -248,9 +248,26 @@ func (c *Sm4Cipher) Encrypt(dst, src []byte) {
 	cryptBlock(c.subkeys, c.block1, c.block2, dst, src, false)
 }
 
+func EncryptBlock(key, dst, src []byte) {
+	cipherBlock, err := NewCipher(key)
+	if err != nil {
+		return
+	}
+	cipherBlock.Encrypt(dst, src)
+}
+
 func (c *Sm4Cipher) Decrypt(dst, src []byte) {
 	cryptBlock(c.subkeys, c.block1, c.block2, dst, src, true)
 }
+
+func DecryptBlock(key, dst, src []byte) {
+	cipherBlock, err := NewCipher(key)
+	if err != nil {
+		return
+	}
+	cipherBlock.Decrypt(dst, src)
+}
+
 func xor(in, iv []byte) (out []byte) {
 	if len(in) != len(iv) {
 		return nil
@@ -262,6 +279,7 @@ func xor(in, iv []byte) (out []byte) {
 	}
 	return
 }
+
 func pkcs7Padding(src []byte) []byte {
 	padding := BlockSize - len(src)%BlockSize
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
@@ -284,6 +302,7 @@ func pkcs7UnPadding(src []byte) ([]byte, error) {
 
 	return src[:(length - unpadding)], nil
 }
+
 func Sm4Cbc(key []byte, in []byte, mode bool) (out []byte, err error) {
 	if len(key) != BlockSize {
 		return nil, errors.New("SM4: invalid key size " + strconv.Itoa(len(key)))
