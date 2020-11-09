@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
@@ -189,4 +190,12 @@ func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey
 	}
 	certPem := pem.EncodeToMemory(block)
 	return certPem, nil
+}
+
+func ParseSm2CertifateToX509(asn1data []byte) (*x509.Certificate, error) {
+	sm2Cert, err := ParseCertificate(asn1data)
+	if err != nil {
+		return nil, err
+	}
+	return sm2Cert.ToX509Certificate(), nil
 }

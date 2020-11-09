@@ -27,6 +27,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
@@ -2355,3 +2356,113 @@ func (c *CertificateRequest) CheckSignature() error {
 	return checkSignature(c.SignatureAlgorithm, c.RawTBSCertificateRequest, c.Signature, c.PublicKey)
 }
 
+func (c *Certificate) ToX509Certificate() *x509.Certificate {
+	x509cert := &x509.Certificate{
+		Raw:                     c.Raw,
+		RawTBSCertificate:       c.RawTBSCertificate,
+		RawSubjectPublicKeyInfo: c.RawSubjectPublicKeyInfo,
+		RawSubject:              c.RawSubject,
+		RawIssuer:               c.RawIssuer,
+
+		Signature:          c.Signature,
+		SignatureAlgorithm: x509.SignatureAlgorithm(c.SignatureAlgorithm),
+
+		PublicKeyAlgorithm: x509.PublicKeyAlgorithm(c.PublicKeyAlgorithm),
+		PublicKey:          c.PublicKey,
+
+		Version:      c.Version,
+		SerialNumber: c.SerialNumber,
+		Issuer:       c.Issuer,
+		Subject:      c.Subject,
+		NotBefore:    c.NotBefore,
+		NotAfter:     c.NotAfter,
+		KeyUsage:     x509.KeyUsage(c.KeyUsage),
+
+		Extensions: c.Extensions,
+
+		ExtraExtensions: c.ExtraExtensions,
+
+		UnhandledCriticalExtensions: c.UnhandledCriticalExtensions,
+
+		//ExtKeyUsage:	[]x509.ExtKeyUsage(c.ExtKeyUsage) ,
+		UnknownExtKeyUsage: c.UnknownExtKeyUsage,
+
+		BasicConstraintsValid: c.BasicConstraintsValid,
+		IsCA:                  c.IsCA,
+		MaxPathLen:            c.MaxPathLen,
+		// MaxPathLenZero indicates that BasicConstraintsValid==true and
+		// MaxPathLen==0 should be interpreted as an actual maximum path length
+		// of zero. Otherwise, that combination is interpreted as MaxPathLen
+		// not being set.
+		MaxPathLenZero: c.MaxPathLenZero,
+
+		SubjectKeyId:   c.SubjectKeyId,
+		AuthorityKeyId: c.AuthorityKeyId,
+
+		// RFC 5280, 4.2.2.1 (Authority Information Access)
+		OCSPServer:            c.OCSPServer,
+		IssuingCertificateURL: c.IssuingCertificateURL,
+
+		// Subject Alternate Name values
+		DNSNames:       c.DNSNames,
+		EmailAddresses: c.EmailAddresses,
+		IPAddresses:    c.IPAddresses,
+
+		// Name constraints
+		PermittedDNSDomainsCritical: c.PermittedDNSDomainsCritical,
+		PermittedDNSDomains:         c.PermittedDNSDomains,
+
+		// CRL Distribution Points
+		CRLDistributionPoints: c.CRLDistributionPoints,
+
+		PolicyIdentifiers: c.PolicyIdentifiers,
+	}
+
+	for _, val := range c.ExtKeyUsage {
+		x509cert.ExtKeyUsage = append(x509cert.ExtKeyUsage, x509.ExtKeyUsage(val))
+	}
+
+	return x509cert
+}
+
+func (c *Certificate) FromX509Certificate(x509Cert *x509.Certificate) {
+	c.Raw = x509Cert.Raw
+	c.RawTBSCertificate = x509Cert.RawTBSCertificate
+	c.RawSubjectPublicKeyInfo = x509Cert.RawSubjectPublicKeyInfo
+	c.RawSubject = x509Cert.RawSubject
+	c.RawIssuer = x509Cert.RawIssuer
+	c.Signature = x509Cert.Signature
+	c.SignatureAlgorithm = SM2WithSM3
+	c.PublicKeyAlgorithm = PublicKeyAlgorithm(x509Cert.PublicKeyAlgorithm)
+	c.PublicKey = x509Cert.PublicKey
+	c.Version = x509Cert.Version
+	c.SerialNumber = x509Cert.SerialNumber
+	c.Issuer = x509Cert.Issuer
+	c.Subject = x509Cert.Subject
+	c.NotBefore = x509Cert.NotBefore
+	c.NotAfter = x509Cert.NotAfter
+	c.KeyUsage = KeyUsage(x509Cert.KeyUsage)
+	c.Extensions = x509Cert.Extensions
+	c.ExtraExtensions = x509Cert.ExtraExtensions
+	c.UnhandledCriticalExtensions = x509Cert.UnhandledCriticalExtensions
+	c.UnknownExtKeyUsage = x509Cert.UnknownExtKeyUsage
+	c.BasicConstraintsValid = x509Cert.BasicConstraintsValid
+	c.IsCA = x509Cert.IsCA
+	c.MaxPathLen = x509Cert.MaxPathLen
+	c.MaxPathLenZero = x509Cert.MaxPathLenZero
+	c.SubjectKeyId = x509Cert.SubjectKeyId
+	c.AuthorityKeyId = x509Cert.AuthorityKeyId
+	c.OCSPServer = x509Cert.OCSPServer
+	c.IssuingCertificateURL = x509Cert.IssuingCertificateURL
+	c.DNSNames = x509Cert.DNSNames
+	c.EmailAddresses = x509Cert.EmailAddresses
+	c.IPAddresses = x509Cert.IPAddresses
+	c.PermittedDNSDomainsCritical = x509Cert.PermittedDNSDomainsCritical
+	c.PermittedDNSDomains = x509Cert.PermittedDNSDomains
+	c.CRLDistributionPoints = x509Cert.CRLDistributionPoints
+	c.PolicyIdentifiers = x509Cert.PolicyIdentifiers
+
+	for _, val := range x509Cert.ExtKeyUsage {
+		c.ExtKeyUsage = append(c.ExtKeyUsage, ExtKeyUsage(val))
+	}
+}
