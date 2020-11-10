@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 )
 
+// ReadKeyFromMem will return SM4Key from PEM format data.
 func ReadKeyFromMem(data []byte, pwd []byte) (SM4Key, error) {
 	block, _ := pem.Decode(data)
 	if block == nil {
@@ -32,6 +33,7 @@ func ReadKeyFromMem(data []byte, pwd []byte) (SM4Key, error) {
 	return block.Bytes, nil
 }
 
+// ReadKeyFromMem will return SM4Key from filename that saved PEM format data.
 func ReadKeyFromPemFile(FileName string, pwd []byte) (SM4Key, error) {
 	data, err := ioutil.ReadFile(FileName)
 	if err != nil {
@@ -40,6 +42,7 @@ func ReadKeyFromPemFile(FileName string, pwd []byte) (SM4Key, error) {
 	return ReadKeyFromMem(data, pwd)
 }
 
+// WriteKeyToMem will convert SM4Key to PEM format data and return it.
 func WriteKeyToMem(key SM4Key, pwd []byte) ([]byte, error) {
 	if pwd != nil {
 		block, err := x509.EncryptPEMBlock(rand.Reader,
@@ -57,6 +60,8 @@ func WriteKeyToMem(key SM4Key, pwd []byte) ([]byte, error) {
 	}
 }
 
+// WriteKeyToMem will convert SM4Key to PEM format data, then write it
+// into the input filename.
 func WriteKeyToPemFile(FileName string, key SM4Key, pwd []byte) error {
 	var block *pem.Block
 	var err error
