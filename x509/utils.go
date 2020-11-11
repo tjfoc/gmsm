@@ -3,20 +3,13 @@ package x509
 import (
 	"bytes"
 	"crypto"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
-	"fmt"
-	"net"
-	"net/mail"
-
 	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
-	"github.com/cloudflare/cfssl/csr"
 )
 
 func ReadPrivateKeyFromMem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {
@@ -225,73 +218,4 @@ func ParseSm2CertifateToX509(asn1data []byte) (*x509.Certificate, error) {
 		return nil, err
 	}
 	return sm2Cert.ToX509Certificate(), nil
-}
-
-func signerAlgo(priv crypto.Signer) SignatureAlgorithm {
-	switch pub := priv.Public().(type) {
-	case *ecdsa.PublicKey:
-		if pub.Curve == sm2.P256Sm2() {
-			return SM2WithSM3
-		}
-		return UnknownSignatureAlgorithm
-	case *sm2.PublicKey:
-		return SM2WithSM3
-	default:
-		return UnknownSignatureAlgorithm
-	}
-}
-
-func appendCAInfoToCSRSm2(reqConf *csr.CAConfig, csreq *CertificateRequest) error {
-	pathlen := reqConf.PathLength
-	if pathlen == 0 && !reqConf.PathLenZero {
-		pathlen = -1
-	}
-	val, err := asn1.Marshal(csr.BasicConstraints{IsCA: true, MaxPathLen: pathlen})
-
-	if err != nil {
-		return err
-	}
-
-	csreq.ExtraExtensions = []pkix.Extension{
-		{
-			Id:       asn1.ObjectIdentifier{2, 5, 29, 19},
-			Value:    val,
-			Critical: true,
-		},
-	}
-
-	return nil
-}
-
-func GenerateCSRFromCfssl(signer crypto.Signer, req *csr.CertificateRequest, privKey *sm2.PrivateKey) (csr []byte, err error) {
-	sigAlgo := signerAlgo(signer)
-	if sigAlgo == UnknownSignatureAlgorithm {
-		return nil, fmt.Errorf("private key is unavailable")
-	}
-	var tpl = CertificateRequest{
-		Subject:            req.Name(),
-		SignatureAlgorithm: sigAlgo,
-	}
-	for i := range req.Hosts {
-		if ip := net.ParseIP(req.Hosts[i]); ip != nil {
-			tpl.IPAddresses = append(tpl.IPAddresses, ip)
-		} else if email, err := mail.ParseAddress(req.Hosts[i]); err == nil && email != nil {
-			tpl.EmailAddresses = append(tpl.EmailAddresses, email.Address)
-		} else {
-			tpl.DNSNames = append(tpl.DNSNames, req.Hosts[i])
-		}
-	}
-
-	if req.CA != nil {
-		err = appendCAInfoToCSRSm2(req.CA, &tpl)
-		if err != nil {
-			err = fmt.Errorf("sm2 GenerationFailed")
-			return
-		}
-	}
-	if req.SerialNumber != "" {
-
-	}
-	csr, err = CreateCertificateRequestToPem(&tpl, privKey)
-	return csr, err
 }
