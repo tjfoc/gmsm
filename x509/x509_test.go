@@ -32,17 +32,17 @@ func TestX509(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	privPem, err := WritePrivateKeyToMem(priv, nil) // 生成密钥文件
+	privPem, err := WritePrivateKeyToPem(priv, nil) // 生成密钥文件
 	if err != nil {
 		t.Fatal(err)
 	}
 	pubKey, _ := priv.Public().(*sm2.PublicKey)
-	pubkeyPem, err := WritePublicKeyToMem(pubKey)       // 生成公钥文件
-	privKey, err := ReadPrivateKeyFromMem(privPem, nil) // 读取密钥
+	pubkeyPem, err := WritePublicKeyToPem(pubKey)       // 生成公钥文件
+	privKey, err := ReadPrivateKeyFromPem(privPem, nil) // 读取密钥
 	if err != nil {
 		t.Fatal(err)
 	}
-	pubKey, err = ReadPublicKeyFromMem(pubkeyPem) // 读取公钥
+	pubKey, err = ReadPublicKeyFromPem(pubkeyPem) // 读取公钥
 	if err != nil {
 		t.Fatal(err)
 	}

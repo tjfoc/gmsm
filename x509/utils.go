@@ -12,7 +12,7 @@ import (
 	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 )
 
-func ReadPrivateKeyFromMem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {
+func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {
 	var block *pem.Block
 	block, _ = pem.Decode(privateKeyPem)
 	if block == nil {
@@ -22,7 +22,7 @@ func ReadPrivateKeyFromMem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, e
 	return priv, err
 }
 
-func WritePrivateKeyToMem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
+func WritePrivateKeyToPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	var block *pem.Block
 	der, err := MarshalSm2PrivateKey(key, pwd) //Convert private key to DER format
 	if err != nil {
@@ -43,7 +43,7 @@ func WritePrivateKeyToMem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	return certPem, nil
 }
 
-func ReadPublicKeyFromMem(publicKeyPem []byte) (*sm2.PublicKey, error) {
+func ReadPublicKeyFromPem(publicKeyPem []byte) (*sm2.PublicKey, error) {
 	block, _ := pem.Decode(publicKeyPem)
 	if block == nil || block.Type != "PUBLIC KEY" {
 		return nil, errors.New("failed to decode public key")
@@ -51,7 +51,7 @@ func ReadPublicKeyFromMem(publicKeyPem []byte) (*sm2.PublicKey, error) {
 	return ParseSm2PublicKey(block.Bytes)
 }
 
-func WritePublicKeyToMem(key *sm2.PublicKey) ([]byte, error) {
+func WritePublicKeyToPem(key *sm2.PublicKey) ([]byte, error) {
 	der, err := MarshalSm2PublicKey(key) //Convert publick key to DER format
 	if err != nil {
 		return nil, err
