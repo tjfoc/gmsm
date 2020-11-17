@@ -5,14 +5,13 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
-
 	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 )
 
-//read private key from PEM format
 func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {
 	var block *pem.Block
 	block, _ = pem.Decode(privateKeyPem)
@@ -23,8 +22,7 @@ func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, e
 	return priv, err
 }
 
-//Convert private key to PEM format
-func WritePrivateKeytoPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
+func WritePrivateKeyToPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	var block *pem.Block
 	der, err := MarshalSm2PrivateKey(key, pwd) //Convert private key to DER format
 	if err != nil {
@@ -45,7 +43,6 @@ func WritePrivateKeytoPem(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	return certPem, nil
 }
 
-//read publick key from PEM format
 func ReadPublicKeyFromPem(publicKeyPem []byte) (*sm2.PublicKey, error) {
 	block, _ := pem.Decode(publicKeyPem)
 	if block == nil || block.Type != "PUBLIC KEY" {
@@ -54,8 +51,7 @@ func ReadPublicKeyFromPem(publicKeyPem []byte) (*sm2.PublicKey, error) {
 	return ParseSm2PublicKey(block.Bytes)
 }
 
-//Convert public key to PEM format
-func WritePublicKeytoPem(key *sm2.PublicKey) ([]byte, error) {
+func WritePublicKeyToPem(key *sm2.PublicKey) ([]byte, error) {
 	der, err := MarshalSm2PublicKey(key) //Convert publick key to DER format
 	if err != nil {
 		return nil, err
@@ -97,9 +93,28 @@ func ReadCertificateFromPem(certPem []byte) (*Certificate, error) {
 	return ParseCertificate(block.Bytes)
 }
 
-func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
+// CreateCertificate creates a new certificate based on a template. The
+// following members of template are used: SerialNumber, Subject, NotBefore,
+// NotAfter, KeyUsage, ExtKeyUsage, UnknownExtKeyUsage, BasicConstraintsValid,
+// IsCA, MaxPathLen, SubjectKeyId, DNSNames, PermittedDNSDomainsCritical,
+// PermittedDNSDomains, SignatureAlgorithm.
+//
+// The certificate is signed by parent. If parent is equal to template then the
+// certificate is self-signed. The parameter pub is the public key of the
+// signee and priv is the private key of the signer.
+//
+// The returned slice is the certificate in DER encoding.
+//
+// All keys types that are implemented via crypto.Signer are supported (This
+// includes *rsa.PublicKey and *ecdsa.PublicKey.)
+func CreateCertificate(template, parent *Certificate, publicKey, privateKey interface{}) ([]byte, error) {
 	if template.SerialNumber == nil {
 		return nil, errors.New("x509: no SerialNumber given")
+	}
+
+	privKey, ok := privateKey.(crypto.Signer)
+	if !ok {
+		return nil, errors.New("x509: certificate private key does not implement crypto.Signer")
 	}
 
 	hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(privKey.Public(), template.SignatureAlgorithm)
@@ -107,7 +122,7 @@ func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey
 		return nil, err
 	}
 
-	publicKeyBytes, publicKeyAlgorithm, err := marshalPublicKey(pubKey)
+	publicKeyBytes, publicKeyAlgorithm, err := marshalPublicKey(publicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -173,13 +188,19 @@ func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey
 	if err != nil {
 		return nil, err
 	}
-	der, err := asn1.Marshal(certificate{
+	return asn1.Marshal(certificate{
 		nil,
 		c,
 		signatureAlgorithm,
 		asn1.BitString{Bytes: signature, BitLength: len(signature) * 8},
 	})
+}
 
+// CreateCertificateToPem creates a new certificate based on a template and
+// encodes it to PEM format. It uses CreateCertificate to create certificate
+// and returns its PEM format.
+func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
+	der, err := CreateCertificate(template, parent, pubKey, privKey)
 	if err != nil {
 		return nil, err
 	}
@@ -189,4 +210,12 @@ func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey
 	}
 	certPem := pem.EncodeToMemory(block)
 	return certPem, nil
+}
+
+func ParseSm2CertifateToX509(asn1data []byte) (*x509.Certificate, error) {
+	sm2Cert, err := ParseCertificate(asn1data)
+	if err != nil {
+		return nil, err
+	}
+	return sm2Cert.ToX509Certificate(), nil
 }
