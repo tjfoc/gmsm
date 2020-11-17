@@ -248,25 +248,13 @@ func (c *Sm4Cipher) Encrypt(dst, src []byte) {
 	cryptBlock(c.subkeys, c.block1, c.block2, dst, src, false)
 }
 
-func EncryptBlock(key, dst, src []byte) {
-	cipherBlock, err := NewCipher(key)
-	if err != nil {
-		return
-	}
-	cipherBlock.Encrypt(dst, src)
-}
+
 
 func (c *Sm4Cipher) Decrypt(dst, src []byte) {
 	cryptBlock(c.subkeys, c.block1, c.block2, dst, src, true)
 }
 
-func DecryptBlock(key, dst, src []byte) {
-	cipherBlock, err := NewCipher(key)
-	if err != nil {
-		return
-	}
-	cipherBlock.Decrypt(dst, src)
-}
+
 
 func xor(in, iv []byte) (out []byte) {
 	if len(in) != len(iv) {
