@@ -312,7 +312,7 @@ func (hs *clientHandshakeStateGM) doFullHandshake() error {
 		certRequested = true
 		hs.finishedHash.Write(certReq.marshal())
 
-		if chainToSend, err = hs.getCertificate(certReq); err != nil || chainToSend.Certificate == nil {
+		if chainToSend, err = hs.getCertificate(certReq); err != nil {
 			c.sendAlert(alertInternalError)
 			return err
 		}
