@@ -72,8 +72,8 @@ func ReadCertificateRequestFromPem(certPem []byte) (*CertificateRequest, error) 
 	return ParseCertificateRequest(block.Bytes)
 }
 
-func CreateCertificateRequestToPem(template *CertificateRequest, privKey *sm2.PrivateKey) ([]byte, error) {
-	der, err := CreateCertificateRequest(rand.Reader, template, privKey)
+func CreateCertificateRequestToPem(template *CertificateRequest, signer crypto.Signer) ([]byte, error) {
+	der, err := CreateCertificateRequest(rand.Reader, template, signer)
 	if err != nil {
 		return nil, err
 	}
