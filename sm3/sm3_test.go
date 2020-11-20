@@ -37,6 +37,7 @@ func TestSm3(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer os.Remove("ifile")
 	msg, err = ioutil.ReadFile("ifile")
 	if err != nil {
 		log.Fatal(err)

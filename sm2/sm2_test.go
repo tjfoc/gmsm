@@ -44,7 +44,7 @@ func TestSm2(t *testing.T) {
 		return
 	}
 	// fmt.Printf("Cipher text = %v\n", d0)
-	d1, err := priv.Decrypt(d0)
+	d1, err := priv.Decrypt(nil, d0, nil)
 	if err != nil {
 		fmt.Printf("Error: failed to decrypt: %v\n", err)
 	}
@@ -63,6 +63,7 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer os.Remove("ifile")
 	privKey, err := ReadPrivateKeyFromPem("priv.pem", nil) // 读取密钥
 	if err != nil {
 		log.Fatal(err)
@@ -80,6 +81,7 @@ func TestSm2(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer os.Remove("ofile")
 	signdata, _ := ioutil.ReadFile("ofile")
 	ok = privKey.Verify(msg, signdata) // 密钥验证
 	if ok != true {
