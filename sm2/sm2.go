@@ -63,7 +63,6 @@ var errZeroParam = errors.New("zero parameter")
 var one = new(big.Int).SetInt64(1)
 var two = new(big.Int).SetInt64(2)
 
-//****************************Signature algorithm****************************//
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(random io.Reader, msg []byte, signer crypto.SignerOpts) ([]byte, error) {
 	r, s, err := Sm2Sign(priv, msg, nil, random)
@@ -80,6 +79,24 @@ func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 		return false
 	}
 	return Sm2Verify(pub, msg, default_uid, sm2Sign.R, sm2Sign.S)
+}
+
+func (pub *PublicKey) Sm3Digest(msg, uid []byte) ([]byte, error) {
+	if len(uid) == 0 {
+		uid = default_uid
+	}
+
+	za, err := ZA(pub, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	e, err := msgHash(za, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return e.Bytes(), nil
 }
 
 //****************************Encryption algorithm****************************//
@@ -105,17 +122,11 @@ func KeyExchangeA(klen int, ida, idb []byte, priA *PrivateKey, pubB *PublicKey, 
 //****************************************************************************//
 
 func Sm2Sign(priv *PrivateKey, msg, uid []byte, random io.Reader) (r, s *big.Int, err error) {
-	if len(uid) == 0 {
-		uid = default_uid
-	}
-	za, err := ZA(&priv.PublicKey, uid)
+	digest, err := priv.PublicKey.Sm3Digest(msg, uid)
 	if err != nil {
 		return nil, nil, err
 	}
-	e, err := msgHash(za, msg)
-	if err != nil {
-		return nil, nil, err
-	}
+	e := new(big.Int).SetBytes(digest)
 	c := priv.PublicKey.Curve
 	N := c.Params().N
 	if N.Sign() == 0 {
