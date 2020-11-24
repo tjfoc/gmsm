@@ -107,17 +107,12 @@ func ReadCertificateFromPem(certPem []byte) (*Certificate, error) {
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PublicKey and *ecdsa.PublicKey.)
-func CreateCertificate(template, parent *Certificate, publicKey, privateKey interface{}) ([]byte, error) {
+func CreateCertificate(template, parent *Certificate, publicKey *sm2.PublicKey, signer crypto.Signer) ([]byte, error) {
 	if template.SerialNumber == nil {
 		return nil, errors.New("x509: no SerialNumber given")
 	}
 
-	privKey, ok := privateKey.(crypto.Signer)
-	if !ok {
-		return nil, errors.New("x509: certificate private key does not implement crypto.Signer")
-	}
-
-	hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(privKey.Public(), template.SignatureAlgorithm)
+	hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(signer.Public(), template.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +179,7 @@ func CreateCertificate(template, parent *Certificate, publicKey, privateKey inte
 	}
 
 	var signature []byte
-	signature, err = privKey.Sign(rand.Reader, digest, signerOpts)
+	signature, err = signer.Sign(rand.Reader, digest, signerOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -199,8 +194,8 @@ func CreateCertificate(template, parent *Certificate, publicKey, privateKey inte
 // CreateCertificateToPem creates a new certificate based on a template and
 // encodes it to PEM format. It uses CreateCertificate to create certificate
 // and returns its PEM format.
-func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) ([]byte, error) {
-	der, err := CreateCertificate(template, parent, pubKey, privKey)
+func CreateCertificateToPem(template, parent *Certificate, pubKey *sm2.PublicKey, signer crypto.Signer) ([]byte, error) {
+	der, err := CreateCertificate(template, parent, pubKey, signer)
 	if err != nil {
 		return nil, err
 	}
