@@ -346,16 +346,16 @@ func (ka *eccKeyAgreementGM) processClientKeyExchange(config *Config, cert *Cert
 
 	cipher := ckx.ciphertext[2:]
 
-	// mod by syl due to offical tls
-	priv, ok := cert.PrivateKey.(*sm2.PrivateKey)
+	decrypter, ok := cert.PrivateKey.(crypto.Decrypter)
 	if !ok {
-		return nil, errors.New("tls: certificate private key does not implement sm2.PrivateKey")
+		return nil, errors.New("tls: certificate private key does not implement crypto.Decrypter")
 	}
-	//plain, err := cert.EncipherPrivateKey.Decrypt(config.rand(), cipher, nil)
-	plain, err := sm2.Decrypt(priv, cipher)
+
+	plain, err := decrypter.Decrypt(config.rand(), cipher, nil)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(plain) != 48 {
 		return nil, errClientKeyExchange
 	}
