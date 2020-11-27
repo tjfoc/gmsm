@@ -100,11 +100,11 @@ func (pub *PublicKey) Sm3Digest(msg, uid []byte) ([]byte, error) {
 }
 
 //****************************Encryption algorithm****************************//
-func (pub *PublicKey) Encrypt(data []byte, random io.Reader) ([]byte, error) {
+func (pub *PublicKey) EncryptAsn1(data []byte, random io.Reader) ([]byte, error) {
 	return EncryptAsn1(pub, data, random)
 }
 
-func (priv *PrivateKey) Decrypt(data []byte) ([]byte, error) {
+func (priv *PrivateKey) DecryptAsn1(data []byte) ([]byte, error) {
 	return DecryptAsn1(priv, data)
 }
 
@@ -619,3 +619,9 @@ var zeroReader = &zr{}
 func getLastBit(a *big.Int) uint {
 	return a.Bit(0)
 }
+
+// crypto.Decrypter
+func (priv *PrivateKey) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintext []byte, err error){
+	return Decrypt(priv, msg)
+}
+

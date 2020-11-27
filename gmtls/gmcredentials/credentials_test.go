@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/Hyperledger-TWGC/tjfoc-gm/gmtls"
 	"github.com/Hyperledger-TWGC/tjfoc-gm/gmtls/gmcredentials/echo"
@@ -109,6 +110,7 @@ func echoTest(c echo.EchoClient) {
 func Test(t *testing.T) {
 	end = make(chan bool, 64)
 	go serverRun()
+	time.Sleep(1000000)
 	go clientRun()
 	<-end
 }
