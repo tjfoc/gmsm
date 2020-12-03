@@ -5,10 +5,9 @@ GM SM2/3/4 library based on Golang
 
 
 
-[![Build Status](https://travis-ci.com/Hyperledger-TWGC/tjfoc-gm.svg?branch=dev-fabric)](https://travis-ci.com/Hyperledger-TWGC/tjfoc-gm)
-[![Build Status](https://dev.azure.com/Hyperledger/TWGC/_apis/build/status/Hyperledger-TWGC.tjfoc-gm?branchName=dev-fabric)](https://dev.azure.com/Hyperledger/TWGC/_build/latest?definitionId=127&branchName=dev-fabric)
+
 ## Feature
-tjfoc-gm包含以下主要功能
+tjfoc-gmsm包含以下主要功能
 
     SM2: 国密椭圆曲线算法库
         . 支持Generate Key, Sign, Verify基础操作
@@ -54,11 +53,6 @@ tjfoc国密交流
  See the License for the specific language governing permissions and limitations under the License.
 =======
 
-该分支内容暂不更新，若想使用gmsm请前往本仓库的master分支。
 
-
-关于fabric国密适配实现代码请前行另一仓库，在以下仓库更新
-
-https://github.com/Hyperledger-TWGC/tjfoc-gm
 
 
