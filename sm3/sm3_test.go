@@ -18,7 +18,6 @@ package sm3
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"testing"
 )
@@ -35,11 +34,11 @@ func TestSm3(t *testing.T) {
 	msg := []byte("test")
 	err := ioutil.WriteFile("ifile", msg, os.FileMode(0644)) // 生成测试文件
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	msg, err = ioutil.ReadFile("ifile")
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	hw := New()
 	hw.Write(msg)

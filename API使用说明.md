@@ -1,19 +1,15 @@
 # 国密GM/T Go API使用说明
 
-## 国密gmsm包安装
+## Go包安装
 
 ```bash
-go get -u github.com/tjfoc/gmsm
+go get -u github.com/Hyperledger-TWGC/tjfoc-gm
 ```
 
 ## SM3密码杂凑算法 - SM3 cryptographic hash algorithm
-
-遵循的SM3标准号为： GM/T 0004-2012
-
-导入包
-```Go
-import github.com/tjfoc/gmsm/sm3
-```
+- 遵循的SM3标准号为： GM/T 0004-2012
+- g package：`github.com/Hyperledger-TWGC/tjfoc-gm/sm3`
+- `type SM3 struct` 是原生接口hash.Hash的一个实现
 
 ### 代码示例
 
@@ -24,34 +20,17 @@ import github.com/tjfoc/gmsm/sm3
     sum := h.Sum(nil)
     fmt.Printf("digest value is: %x\n",sum)
 ```
-### 方法列表
-
-####  New 
-创建哈希计算实例
-```Go
-func New() hash.Hash 
-```
-
-#### Sum 
-返回SM3哈希算法摘要值
-```Go
-func Sum() []byte 
-```
 
 ## SM4分组密码算法 - SM4 block cipher algorithm
 
-遵循的SM4标准号为:  GM/T 0002-2012
-
-导入包
-```Go
-import github.com/tjfoc/gmsm/sm4
-```
+- 遵循的SM4标准号为:  GM/T 0002-2012
+- go package：`github.com/Hyperledger-TWGC/tjfoc-gm/sm4`
 
 ### 代码示例
 
 ```Go
     import  "crypto/cipher"
-    import  "github.com/tjfoc/gmsm/sm4"
+    import  "github.com/Hyperledger-TWGC/tjfoc-gm/sm4"
 
     func main(){
         // 128比特密钥
@@ -117,23 +96,19 @@ func NewCipher(key []byte) (cipher.Block, error)
 
 ## SM2椭圆曲线公钥密码算法 - Public key cryptographic algorithm SM2 based on elliptic curves
 
-遵循的SM2标准号为： GM/T 0003.1-2012、GM/T 0003.2-2012、GM/T 0003.3-2012、GM/T 0003.4-2012、GM/T 0003.5-2012、GM/T 0009-2012、GM/T 0010-2012
-
-导入包
-```Go
-import github.com/tjfoc/gmsm/sm2
-```
+- 遵循的SM2标准号为： GM/T 0003.1-2012、GM/T 0003.2-2012、GM/T 0003.3-2012、GM/T 0003.4-2012、GM/T 0003.5-2012、GM/T 0009-2012、GM/T 0010-2012
+- go package： `github.com/Hyperledger-TWGC/tjfoc-gm/sm2`
 
 ### 代码示例
 
 ```Go
-    priv, err := sm2.GenerateKey() // 生成密钥对
+    priv, err := sm2.GenerateKey(rand.Reader) // 生成密钥对
     if err != nil {
     	log.Fatal(err)
     }
     msg := []byte("Tongji Fintech Research Institute")
     pub := &priv.PublicKey
-    ciphertxt, err := pub.Encrypt(msg)
+    ciphertxt, err := pub.Encrypt(msg,rand.Reader)
     if err != nil {
     	log.Fatal(err)
     }
@@ -146,11 +121,11 @@ import github.com/tjfoc/gmsm/sm2
         log.Fatal("原文不匹配")
     }
 
-    r,s,err := sm2.Sign(priv, msg)
+   sign,err := priv.Sign(rand.Reader, msg, nil)
     if err != nil {
     	log.Fatal(err)
     }
-    isok := sm2.Verify(pub,msg,r,s)
+    isok := pubKey.Verify(msg, sign)
     fmt.Printf("Verified: %v\n", isok)
 ```
 
@@ -159,25 +134,25 @@ import github.com/tjfoc/gmsm/sm2
 #### GenerateKey
 生成随机秘钥。
 ```Go
-func GenerateKey() (*PrivateKey, error) 
+func GenerateKey(rand.Reader) (*PrivateKey, error) 
 ```
 
 #### Sign
 用私钥签名数据，成功返回以两个大数表示的签名结果，否则返回错误。
 ```Go
-func Sign(priv *PrivateKey, hash []byte) (r, s *big.Int, err error)
+func SignSign(random io.Reader, msg []byte, signer crypto.SignerOpts) (signature[]byte, err error)
 ```
 
 #### Verify
 用公钥验证数据签名, 验证成功返回True，否则返回False。
 ```Go
-func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool 
+func Verify(pub *PublicKey, msg []byte, sign []byte)) bool 
 ```
 
 #### Encrypt
 用公钥加密数据,成功返回密文错误，否则返回错误。
 ```Go
-func Encrypt(pub *PublicKey, data []byte) ([]byte, error) 
+func Encrypt(pub *PublicKey, data []byte, random io.Reader) ([]byte, error) 
 ```
 
 #### Decrypt
