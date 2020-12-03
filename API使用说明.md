@@ -30,7 +30,7 @@ go get -u github.com/Hyperledger-TWGC/tjfoc-gm
 
 ```Go
     import  "crypto/cipher"
-    import  "github.com/Hyperledger-TWGC/tjfoc-gm/sm4"
+    import  "github.com/tjfoc/gmsm/sm4"
 
     func main(){
         // 128比特密钥

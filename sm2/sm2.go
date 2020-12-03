@@ -27,7 +27,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm3"
+	"github.com/tjfoc/gmsm/sm3"
 )
 
 var (
@@ -198,10 +198,10 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 	return x.Cmp(r) == 0
 }
 
-/* 
+/*
     za, err := ZA(pub, uid)
 	if err != nil {
-		return 
+		return
 	}
 	e, err := msgHash(za, msg)
 	hash=e.getBytes()
@@ -621,7 +621,6 @@ func getLastBit(a *big.Int) uint {
 }
 
 // crypto.Decrypter
-func (priv *PrivateKey) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintext []byte, err error){
+func (priv *PrivateKey) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintext []byte, err error) {
 	return Decrypt(priv, msg)
 }
-

@@ -9,7 +9,8 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
+
+	"github.com/tjfoc/gmsm/sm2"
 )
 
 func ReadPrivateKeyFromPem(privateKeyPem []byte, pwd []byte) (*sm2.PrivateKey, error) {

@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
+	"github.com/tjfoc/gmsm/x509"
 )
 
 // serverHandshakeState contains details of a server handshake in progress.
@@ -406,7 +406,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	}
 
 	keyAgreement := hs.suite.ka(c.vers)
-	skx, err := keyAgreement.generateServerKeyExchange(c.config, hs.cert,hs.cert, hs.clientHello, hs.hello)
+	skx, err := keyAgreement.generateServerKeyExchange(c.config, hs.cert, hs.cert, hs.clientHello, hs.hello)
 	if err != nil {
 		c.sendAlert(alertHandshakeFailure)
 		return err

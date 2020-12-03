@@ -11,13 +11,14 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm3"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm4"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 	"io/ioutil"
 	"strings"
 	"sync"
+
+	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/sm3"
+	"github.com/tjfoc/gmsm/sm4"
+	"github.com/tjfoc/gmsm/x509"
 )
 
 const VersionGMSSL = 0x0101 // GM/T 0024-2014

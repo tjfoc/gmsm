@@ -32,7 +32,7 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
+	"github.com/tjfoc/gmsm/sm2"
 )
 
 /*
@@ -172,7 +172,7 @@ func MarshalSm2PublicKey(key *sm2.PublicKey) ([]byte, error) {
 	var r pkixPublicKey
 	var algo pkix.AlgorithmIdentifier
 
-	if(key.Curve.Params()!=sm2.P256Sm2().Params()){
+	if key.Curve.Params() != sm2.P256Sm2().Params() {
 		return nil, errors.New("x509: unsupported elliptic curve")
 	}
 	algo.Algorithm = oidSM2
@@ -280,7 +280,7 @@ func ParsePKCS8EcryptedPrivateKey(der, pwd []byte) (*sm2.PrivateKey, error) {
 
 func ParsePKCS8PrivateKey(der, pwd []byte) (*sm2.PrivateKey, error) {
 	if pwd == nil {
-		
+
 		return ParsePKCS8UnecryptedPrivateKey(der)
 	}
 	return ParsePKCS8EcryptedPrivateKey(der, pwd)
@@ -369,4 +369,3 @@ func MarshalSm2PrivateKey(key *sm2.PrivateKey, pwd []byte) ([]byte, error) {
 	}
 	return MarshalSm2EcryptedPrivateKey(key, pwd)
 }
-

@@ -12,11 +12,12 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/x509"
 	"io"
 	"strconv"
 	"sync/atomic"
+
+	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/x509"
 )
 
 type clientHandshakeStateGM struct {
@@ -635,7 +636,7 @@ findCert:
 
 			if x509Cert.PublicKeyAlgorithm == x509.ECDSA {
 				pubKey, ok := x509Cert.PublicKey.(*ecdsa.PublicKey)
-				if ok && pubKey.Curve == sm2.P256Sm2(){
+				if ok && pubKey.Curve == sm2.P256Sm2() {
 					isGMCert = true
 				}
 			}

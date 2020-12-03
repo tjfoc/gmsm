@@ -33,7 +33,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 	"hash"
 	"io"
 	"math/big"
@@ -41,7 +40,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm3"
+	"github.com/tjfoc/gmsm/sm2"
+
+	"github.com/tjfoc/gmsm/sm3"
 	"golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
 )

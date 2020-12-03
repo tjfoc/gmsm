@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
+	"github.com/tjfoc/gmsm/sm2"
 )
 
 func TestX509(t *testing.T) {

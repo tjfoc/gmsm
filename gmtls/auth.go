@@ -23,7 +23,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
+	"github.com/tjfoc/gmsm/sm2"
 )
 
 // pickSignatureAlgorithm selects a signature algorithm that is compatible with
