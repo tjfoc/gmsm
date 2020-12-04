@@ -38,7 +38,7 @@ func (sm3 *SM3) p0(x uint32) uint32 { return x ^ sm3.leftRotate(x, 9) ^ sm3.left
 
 func (sm3 *SM3) p1(x uint32) uint32 { return x ^ sm3.leftRotate(x, 15) ^ sm3.leftRotate(x, 23) }
 
-func (sm3 *SM3) leftRotate(x uint32, i uint32) uint32 { return (x<<(i%32) | x>>(32-i%32)) }
+func (sm3 *SM3) leftRotate(x uint32, i uint32) uint32 { return x<<(i%32) | x>>(32-i%32) }
 
 func (sm3 *SM3) pad() []byte {
 	msg := sm3.unhandleMsg
@@ -63,7 +63,7 @@ func (sm3 *SM3) pad() []byte {
 	return msg
 }
 
-func (sm3 *SM3) update(msg []byte, nblocks int) {
+func (sm3 *SM3) update(msg []byte) {
 	var w [68]uint32
 	var w1 [64]uint32
 
@@ -119,7 +119,7 @@ func (sm3 *SM3) update(msg []byte, nblocks int) {
 	}
 	sm3.digest[0], sm3.digest[1], sm3.digest[2], sm3.digest[3], sm3.digest[4], sm3.digest[5], sm3.digest[6], sm3.digest[7] = a, b, c, d, e, f, g, h
 }
-func (sm3 *SM3) update2(msg []byte, nblocks int)([8]uint32){
+func (sm3 *SM3) update2(msg []byte,) [8]uint32 {
 	var w [68]uint32
 	var w1 [64]uint32
 
@@ -175,8 +175,10 @@ func (sm3 *SM3) update2(msg []byte, nblocks int)([8]uint32){
 	}
 	var digest [8]uint32
 	digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7] = a, b, c, d, e, f, g, h
-   return digest
+	return digest
 }
+
+// 创建哈希计算实例
 func New() hash.Hash {
 	var sm3 SM3
 
@@ -184,14 +186,12 @@ func New() hash.Hash {
 	return &sm3
 }
 
-// BlockSize, required by the hash.Hash interface.
 // BlockSize returns the hash's underlying block size.
 // The Write method must be able to accept any amount
 // of data, but it may operate more efficiently if all writes
 // are a multiple of the block size.
 func (sm3 *SM3) BlockSize() int { return 64 }
 
-// Size, required by the hash.Hash interface.
 // Size returns the number of bytes Sum will return.
 func (sm3 *SM3) Size() int { return 32 }
 
@@ -212,7 +212,6 @@ func (sm3 *SM3) Reset() {
 	sm3.unhandleMsg = []byte{}
 }
 
-// Write, required by the hash.Hash interface.
 // Write (via the embedded io.Writer interface) adds more data to the running hash.
 // It never returns an error.
 func (sm3 *SM3) Write(p []byte) (int, error) {
@@ -220,21 +219,21 @@ func (sm3 *SM3) Write(p []byte) (int, error) {
 	sm3.length += uint64(len(p) * 8)
 	msg := append(sm3.unhandleMsg, p...)
 	nblocks := len(msg) / sm3.BlockSize()
-	sm3.update(msg, nblocks)
+	sm3.update(msg)
 	// Update unhandleMsg
 	sm3.unhandleMsg = msg[nblocks*sm3.BlockSize():]
 
 	return toWrite, nil
 }
 
-// Sum, required by the hash.Hash interface.
+// 返回SM3哈希算法摘要值
 // Sum appends the current hash to b and returns the resulting slice.
 // It does not change the underlying hash state.
 func (sm3 *SM3) Sum(in []byte) []byte {
-	sm3.Write(in)
+	_, _ = sm3.Write(in)
 	msg := sm3.pad()
-	//Finialize
-	digest:=sm3.update2(msg, len(msg)/sm3.BlockSize())
+	//Finalize
+	digest := sm3.update2(msg)
 
 	// save hash to in
 	needed := sm3.Size()
@@ -255,6 +254,6 @@ func Sm3Sum(data []byte) []byte {
 	var sm3 SM3
 
 	sm3.Reset()
-	sm3.Write(data)
+	_, _ = sm3.Write(data)
 	return sm3.Sum(nil)
 }

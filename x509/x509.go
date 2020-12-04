@@ -14,7 +14,7 @@ limitations under the License.
 */
 
 // crypto/x509 add sm2 support
-package sm2
+package x509
 
 import (
 	"bytes"
@@ -23,11 +23,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/md5"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
@@ -35,12 +35,12 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net"
-	"os"
 	"strconv"
 	"time"
+
+	"github.com/tjfoc/gmsm/sm2"
 
 	"github.com/tjfoc/gmsm/sm3"
 	"golang.org/x/crypto/ripemd160"
@@ -106,7 +106,7 @@ func marshalPublicKey(pub interface{}) (publicKeyBytes []byte, publicKeyAlgorith
 			return
 		}
 		publicKeyAlgorithm.Parameters.FullBytes = paramBytes
-	case *PublicKey:
+	case *sm2.PublicKey:
 		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
 		oid, ok := oidFromNamedCurve(pub.Curve)
 		if !ok {
@@ -370,6 +370,7 @@ const (
 	RSA
 	DSA
 	ECDSA
+	SM2
 )
 
 // OIDs for signature algorithms
@@ -662,7 +663,7 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 	case oid.Equal(oidNamedCurveP521):
 		return elliptic.P521()
 	case oid.Equal(oidNamedCurveP256SM2):
-		return P256Sm2()
+		return sm2.P256Sm2()
 	}
 	return nil
 }
@@ -677,7 +678,7 @@ func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
 		return oidNamedCurveP384, true
 	case elliptic.P521():
 		return oidNamedCurveP521, true
-	case P256Sm2():
+	case sm2.P256Sm2():
 		return oidNamedCurveP256SM2, true
 	}
 	return nil, false
@@ -1027,13 +1028,13 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 			return errors.New("x509: ECDSA signature contained zero or negative values")
 		}
 		switch pub.Curve {
-		case P256Sm2():
-			sm2pub := &PublicKey{
+		case sm2.P256Sm2():
+			sm2pub := &sm2.PublicKey{
 				Curve: pub.Curve,
 				X:     pub.X,
 				Y:     pub.Y,
 			}
-			if !Sm2Verify(sm2pub, signed, nil, ecdsaSig.R, ecdsaSig.S) {
+			if !sm2.Sm2Verify(sm2pub, signed, nil, ecdsaSig.R, ecdsaSig.S) {
 				return errors.New("x509: SM2 verification failure")
 			}
 		default:
@@ -1838,10 +1839,10 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 		default:
 			err = errors.New("x509: unknown elliptic curve")
 		}
-	case *PublicKey:
+	case *sm2.PublicKey:
 		pubType = ECDSA
 		switch pub.Curve {
-		case P256Sm2():
+		case sm2.P256Sm2():
 			hashFunc = SM3
 			sigAlgo.Algorithm = oidSignatureSM2WithSM3
 		default:
@@ -1886,7 +1887,7 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 	return
 }
 
-// CreateCertificate creates a new certificate based on a template. The
+// CreateCertificateToMem creates a new certificate based on a template. The
 // following members of template are used: SerialNumber, Subject, NotBefore,
 // NotAfter, KeyUsage, ExtKeyUsage, UnknownExtKeyUsage, BasicConstraintsValid,
 // IsCA, MaxPathLen, SubjectKeyId, DNSNames, PermittedDNSDomainsCritical,
@@ -1894,100 +1895,12 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 //
 // The certificate is signed by parent. If parent is equal to template then the
 // certificate is self-signed. The parameter pub is the public key of the
-// signee and priv is the private key of the signer.
+// signer and priv is the private key of the signer.
 //
-// The returned slice is the certificate in DER encoding.
+// The returned slice is the certificate in PEM encoding.
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PublicKey and *ecdsa.PublicKey.)
-func CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv interface{}) (cert []byte, err error) {
-	key, ok := priv.(crypto.Signer)
-	if !ok {
-		return nil, errors.New("x509: certificate private key does not implement crypto.Signer")
-	}
-
-	if template.SerialNumber == nil {
-		return nil, errors.New("x509: no SerialNumber given")
-	}
-
-	hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(key.Public(), template.SignatureAlgorithm)
-	if err != nil {
-		return nil, err
-	}
-
-	publicKeyBytes, publicKeyAlgorithm, err := marshalPublicKey(pub)
-	if err != nil {
-		return nil, err
-	}
-
-	asn1Issuer, err := subjectBytes(parent)
-	if err != nil {
-		return
-	}
-
-	asn1Subject, err := subjectBytes(template)
-	if err != nil {
-		return
-	}
-
-	if !bytes.Equal(asn1Issuer, asn1Subject) && len(parent.SubjectKeyId) > 0 {
-		template.AuthorityKeyId = parent.SubjectKeyId
-	}
-
-	extensions, err := buildExtensions(template)
-	if err != nil {
-		return
-	}
-	encodedPublicKey := asn1.BitString{BitLength: len(publicKeyBytes) * 8, Bytes: publicKeyBytes}
-	c := tbsCertificate{
-		Version:            2,
-		SerialNumber:       template.SerialNumber,
-		SignatureAlgorithm: signatureAlgorithm,
-		Issuer:             asn1.RawValue{FullBytes: asn1Issuer},
-		Validity:           validity{template.NotBefore.UTC(), template.NotAfter.UTC()},
-		Subject:            asn1.RawValue{FullBytes: asn1Subject},
-		PublicKey:          publicKeyInfo{nil, publicKeyAlgorithm, encodedPublicKey},
-		Extensions:         extensions,
-	}
-
-	tbsCertContents, err := asn1.Marshal(c)
-	if err != nil {
-		return
-	}
-
-	c.Raw = tbsCertContents
-
-	digest := tbsCertContents
-	switch template.SignatureAlgorithm {
-	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256:
-		break
-	default:
-		h := hashFunc.New()
-		h.Write(tbsCertContents)
-		digest = h.Sum(nil)
-	}
-
-	var signerOpts crypto.SignerOpts
-	signerOpts = hashFunc
-	if template.SignatureAlgorithm != 0 && template.SignatureAlgorithm.isRSAPSS() {
-		signerOpts = &rsa.PSSOptions{
-			SaltLength: rsa.PSSSaltLengthEqualsHash,
-			Hash:       crypto.Hash(hashFunc),
-		}
-	}
-
-	var signature []byte
-	signature, err = key.Sign(rand, digest, signerOpts)
-	if err != nil {
-		return
-	}
-	return asn1.Marshal(certificate{
-		nil,
-		c,
-		signatureAlgorithm,
-		asn1.BitString{Bytes: signature, BitLength: len(signature) * 8},
-	})
-}
 
 // pemCRLPrefix is the magic string that indicates that we have a PEM encoded
 // CRL.
@@ -2224,22 +2137,17 @@ func parseCSRExtensions(rawAttributes []asn1.RawValue) ([]pkix.Extension, error)
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PublicKey and *ecdsa.PublicKey.)
-func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, priv interface{}) (csr []byte, err error) {
-	key, ok := priv.(crypto.Signer)
-	if !ok {
-		return nil, errors.New("x509: certificate private key does not implement crypto.Signer")
-	}
-
+func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, signer crypto.Signer) (csr []byte, err error) {
 	var hashFunc Hash
 	var sigAlgo pkix.AlgorithmIdentifier
-	hashFunc, sigAlgo, err = signingParamsForPublicKey(key.Public(), template.SignatureAlgorithm)
+	hashFunc, sigAlgo, err = signingParamsForPublicKey(signer.Public(), template.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
 
 	var publicKeyBytes []byte
 	var publicKeyAlgorithm pkix.AlgorithmIdentifier
-	publicKeyBytes, publicKeyAlgorithm, err = marshalPublicKey(key.Public())
+	publicKeyBytes, publicKeyAlgorithm, err = marshalPublicKey(signer.Public())
 	if err != nil {
 		return nil, err
 	}
@@ -2353,7 +2261,7 @@ func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, priv
 
 	digest := tbsCSRContents
 	switch template.SignatureAlgorithm {
-	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256,UnknownSignatureAlgorithm:
+	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256, UnknownSignatureAlgorithm:
 		break
 	default:
 		h := hashFunc.New()
@@ -2362,7 +2270,7 @@ func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, priv
 	}
 
 	var signature []byte
-	signature, err = key.Sign(rand, digest, hashFunc)
+	signature, err = signer.Sign(rand, digest, hashFunc)
 	if err != nil {
 		return
 	}
@@ -2394,7 +2302,7 @@ func ParseCertificateRequest(asn1Data []byte) (*CertificateRequest, error) {
 
 func parseCertificateRequest(in *certificateRequest) (*CertificateRequest, error) {
 	out := &CertificateRequest{
-		Raw: in.Raw,
+		Raw:                      in.Raw,
 		RawTBSCertificateRequest: in.TBSCSR.Raw,
 		RawSubjectPublicKeyInfo:  in.TBSCSR.PublicKey.Raw,
 		RawSubject:               in.TBSCSR.Subject.FullBytes,
@@ -2444,101 +2352,113 @@ func (c *CertificateRequest) CheckSignature() error {
 	return checkSignature(c.SignatureAlgorithm, c.RawTBSCertificateRequest, c.Signature, c.PublicKey)
 }
 
-func ReadCertificateRequestFromMem(data []byte) (*CertificateRequest, error) {
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, errors.New("failed to decode certificate request")
+func (c *Certificate) ToX509Certificate() *x509.Certificate {
+	x509cert := &x509.Certificate{
+		Raw:                     c.Raw,
+		RawTBSCertificate:       c.RawTBSCertificate,
+		RawSubjectPublicKeyInfo: c.RawSubjectPublicKeyInfo,
+		RawSubject:              c.RawSubject,
+		RawIssuer:               c.RawIssuer,
+
+		Signature:          c.Signature,
+		SignatureAlgorithm: x509.SignatureAlgorithm(c.SignatureAlgorithm),
+
+		PublicKeyAlgorithm: x509.PublicKeyAlgorithm(c.PublicKeyAlgorithm),
+		PublicKey:          c.PublicKey,
+
+		Version:      c.Version,
+		SerialNumber: c.SerialNumber,
+		Issuer:       c.Issuer,
+		Subject:      c.Subject,
+		NotBefore:    c.NotBefore,
+		NotAfter:     c.NotAfter,
+		KeyUsage:     x509.KeyUsage(c.KeyUsage),
+
+		Extensions: c.Extensions,
+
+		ExtraExtensions: c.ExtraExtensions,
+
+		UnhandledCriticalExtensions: c.UnhandledCriticalExtensions,
+
+		//ExtKeyUsage:	[]x509.ExtKeyUsage(c.ExtKeyUsage) ,
+		UnknownExtKeyUsage: c.UnknownExtKeyUsage,
+
+		BasicConstraintsValid: c.BasicConstraintsValid,
+		IsCA:                  c.IsCA,
+		MaxPathLen:            c.MaxPathLen,
+		// MaxPathLenZero indicates that BasicConstraintsValid==true and
+		// MaxPathLen==0 should be interpreted as an actual maximum path length
+		// of zero. Otherwise, that combination is interpreted as MaxPathLen
+		// not being set.
+		MaxPathLenZero: c.MaxPathLenZero,
+
+		SubjectKeyId:   c.SubjectKeyId,
+		AuthorityKeyId: c.AuthorityKeyId,
+
+		// RFC 5280, 4.2.2.1 (Authority Information Access)
+		OCSPServer:            c.OCSPServer,
+		IssuingCertificateURL: c.IssuingCertificateURL,
+
+		// Subject Alternate Name values
+		DNSNames:       c.DNSNames,
+		EmailAddresses: c.EmailAddresses,
+		IPAddresses:    c.IPAddresses,
+
+		// Name constraints
+		PermittedDNSDomainsCritical: c.PermittedDNSDomainsCritical,
+		PermittedDNSDomains:         c.PermittedDNSDomains,
+
+		// CRL Distribution Points
+		CRLDistributionPoints: c.CRLDistributionPoints,
+
+		PolicyIdentifiers: c.PolicyIdentifiers,
 	}
-	return ParseCertificateRequest(block.Bytes)
+
+	for _, val := range c.ExtKeyUsage {
+		x509cert.ExtKeyUsage = append(x509cert.ExtKeyUsage, x509.ExtKeyUsage(val))
+	}
+
+	return x509cert
 }
 
-func ReadCertificateRequestFromPem(FileName string) (*CertificateRequest, error) {
-	data, err := ioutil.ReadFile(FileName)
-	if err != nil {
-		return nil, err
-	}
-	return ReadCertificateRequestFromMem(data)
-}
+func (c *Certificate) FromX509Certificate(x509Cert *x509.Certificate) {
+	c.Raw = x509Cert.Raw
+	c.RawTBSCertificate = x509Cert.RawTBSCertificate
+	c.RawSubjectPublicKeyInfo = x509Cert.RawSubjectPublicKeyInfo
+	c.RawSubject = x509Cert.RawSubject
+	c.RawIssuer = x509Cert.RawIssuer
+	c.Signature = x509Cert.Signature
+	c.SignatureAlgorithm = SM2WithSM3
+	c.PublicKeyAlgorithm = PublicKeyAlgorithm(x509Cert.PublicKeyAlgorithm)
+	c.PublicKey = x509Cert.PublicKey
+	c.Version = x509Cert.Version
+	c.SerialNumber = x509Cert.SerialNumber
+	c.Issuer = x509Cert.Issuer
+	c.Subject = x509Cert.Subject
+	c.NotBefore = x509Cert.NotBefore
+	c.NotAfter = x509Cert.NotAfter
+	c.KeyUsage = KeyUsage(x509Cert.KeyUsage)
+	c.Extensions = x509Cert.Extensions
+	c.ExtraExtensions = x509Cert.ExtraExtensions
+	c.UnhandledCriticalExtensions = x509Cert.UnhandledCriticalExtensions
+	c.UnknownExtKeyUsage = x509Cert.UnknownExtKeyUsage
+	c.BasicConstraintsValid = x509Cert.BasicConstraintsValid
+	c.IsCA = x509Cert.IsCA
+	c.MaxPathLen = x509Cert.MaxPathLen
+	c.MaxPathLenZero = x509Cert.MaxPathLenZero
+	c.SubjectKeyId = x509Cert.SubjectKeyId
+	c.AuthorityKeyId = x509Cert.AuthorityKeyId
+	c.OCSPServer = x509Cert.OCSPServer
+	c.IssuingCertificateURL = x509Cert.IssuingCertificateURL
+	c.DNSNames = x509Cert.DNSNames
+	c.EmailAddresses = x509Cert.EmailAddresses
+	c.IPAddresses = x509Cert.IPAddresses
+	c.PermittedDNSDomainsCritical = x509Cert.PermittedDNSDomainsCritical
+	c.PermittedDNSDomains = x509Cert.PermittedDNSDomains
+	c.CRLDistributionPoints = x509Cert.CRLDistributionPoints
+	c.PolicyIdentifiers = x509Cert.PolicyIdentifiers
 
-func CreateCertificateRequestToMem(template *CertificateRequest, privKey *PrivateKey) ([]byte, error) {
-	der, err := CreateCertificateRequest(rand.Reader, template, privKey)
-	if err != nil {
-		return nil, err
+	for _, val := range x509Cert.ExtKeyUsage {
+		c.ExtKeyUsage = append(c.ExtKeyUsage, ExtKeyUsage(val))
 	}
-	block := &pem.Block{
-		Type:  "CERTIFICATE REQUEST",
-		Bytes: der,
-	}
-	return pem.EncodeToMemory(block), nil
-}
-
-func CreateCertificateRequestToPem(FileName string, template *CertificateRequest,
-	privKey *PrivateKey) (bool, error) {
-	der, err := CreateCertificateRequest(rand.Reader, template, privKey)
-	if err != nil {
-		return false, err
-	}
-	block := &pem.Block{
-		Type:  "CERTIFICATE REQUEST",
-		Bytes: der,
-	}
-	file, err := os.Create(FileName)
-	if err != nil {
-		return false, err
-	}
-	defer file.Close()
-	err = pem.Encode(file, block)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func ReadCertificateFromMem(data []byte) (*Certificate, error) {
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, errors.New("failed to decode certificate request")
-	}
-	return ParseCertificate(block.Bytes)
-}
-
-func ReadCertificateFromPem(FileName string) (*Certificate, error) {
-	data, err := ioutil.ReadFile(FileName)
-	if err != nil {
-		return nil, err
-	}
-	return ReadCertificateFromMem(data)
-}
-
-func CreateCertificateToMem(template, parent *Certificate, pubKey *PublicKey, privKey *PrivateKey) ([]byte, error) {
-	der, err := CreateCertificate(rand.Reader, template, parent, pubKey, privKey)
-	if err != nil {
-		return nil, err
-	}
-	block := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: der,
-	}
-	return pem.EncodeToMemory(block), nil
-}
-
-func CreateCertificateToPem(FileName string, template, parent *Certificate, pubKey *PublicKey, privKey *PrivateKey) (bool, error) {
-	der, err := CreateCertificate(rand.Reader, template, parent, pubKey, privKey)
-	if err != nil {
-		return false, err
-	}
-	block := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: der,
-	}
-	file, err := os.Create(FileName)
-	if err != nil {
-		return false, err
-	}
-	defer file.Close()
-	err = pem.Encode(file, block)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
 }

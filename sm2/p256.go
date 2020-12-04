@@ -814,8 +814,7 @@ func sm2P256ReduceCarry(a *sm2P256FieldElement, carry uint32) {
 	a[7] += sm2P256Carry[carry*9+7]
 }
 
-// 这代码真是丑比了，我也是对自己醉了。。。
-// 你最好别改这个代码，不然你会死的很惨。。
+
 func sm2P256ReduceDegree(a *sm2P256FieldElement, b *sm2P256LargeFieldElement) {
 	var tmp [18]uint32
 	var carry, x, xMask uint32
