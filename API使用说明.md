@@ -5,7 +5,40 @@
 ```bash
 go get -u github.com/tjfoc/gmsm
 ```
+## SM2椭圆曲线公钥密码算法 - Public key cryptographic algorithm SM2 based on elliptic curves
 
+- 遵循的SM2标准号为： GM/T 0003.1-2012、GM/T 0003.2-2012、GM/T 0003.3-2012、GM/T 0003.4-2012、GM/T 0003.5-2012、GM/T 0009-2012、GM/T 0010-2012
+- go package： `github.com/tjfoc/gmsm/sm2`
+
+### 代码示例
+
+```Go
+    priv, err := sm2.GenerateKey(rand.Reader) // 生成密钥对
+    if err != nil {
+    	log.Fatal(err)
+    }
+    msg := []byte("Tongji Fintech Research Institute")
+    pub := &priv.PublicKey
+    ciphertxt, err := pub.EncryptAsn1(msg,rand.Reader) //sm2加密
+    if err != nil {
+    	log.Fatal(err)
+    }
+    fmt.Printf("加密结果:%x\n",ciphertxt)
+    plaintxt,err :=  priv.DecryptAsn1(ciphertxt)  //sm2解密
+    if err != nil {
+    	log.Fatal(err)
+    }
+    if !bytes.Equal(msg,plaintxt){
+        log.Fatal("原文不匹配")
+    }
+
+   sign,err := priv.Sign(rand.Reader, msg, nil)  //sm2签名
+    if err != nil {
+    	log.Fatal(err)
+    }
+    isok := pubKey.Verify(msg, sign)    //sm2验签
+    fmt.Printf("Verified: %v\n", isok)
+```
 ## SM3密码杂凑算法 - SM3 cryptographic hash algorithm
 - 遵循的SM3标准号为： GM/T 0004-2012
 - g package：`github.com/tjfoc/gmsm/sm3`
@@ -56,44 +89,13 @@ go get -u github.com/tjfoc/gmsm
 
 
 
-## SM2椭圆曲线公钥密码算法 - Public key cryptographic algorithm SM2 based on elliptic curves
 
-- 遵循的SM2标准号为： GM/T 0003.1-2012、GM/T 0003.2-2012、GM/T 0003.3-2012、GM/T 0003.4-2012、GM/T 0003.5-2012、GM/T 0009-2012、GM/T 0010-2012
-- go package： `github.com/tjfoc/gmsm/sm2`
-
-### 代码示例
-
-```Go
-    priv, err := sm2.GenerateKey(rand.Reader) // 生成密钥对
-    if err != nil {
-    	log.Fatal(err)
-    }
-    msg := []byte("Tongji Fintech Research Institute")
-    pub := &priv.PublicKey
-    ciphertxt, err := pub.EncryptAsn1(msg,rand.Reader) //sm2加密
-    if err != nil {
-    	log.Fatal(err)
-    }
-    fmt.Printf("加密结果:%x\n",ciphertxt)
-    plaintxt,err :=  priv.DecryptAsn1(ciphertxt)  //sm2解密
-    if err != nil {
-    	log.Fatal(err)
-    }
-    if !bytes.Equal(msg,plaintxt){
-        log.Fatal("原文不匹配")
-    }
-
-   sign,err := priv.Sign(rand.Reader, msg, nil)  //sm2签名
-    if err != nil {
-    	log.Fatal(err)
-    }
-    isok := pubKey.Verify(msg, sign)    //sm2验签
-    fmt.Printf("Verified: %v\n", isok)
-```
 
 ### 具体功能测试代码参考
+```Go
 github.com/tjfoc/gmsm/sm2/sm2_test.go  //sm2算法
 github.com/tjfoc/gmsm/sm3/sm3_test.go  //sm3算法
 github.com/tjfoc/gmsm/sm4/sm4_test.go  //sm4算法
 github.com/tjfoc/gmsm/x509/x509_test.go //x509国密证书
 github.com/tjfoc/gmsm/gmtls/gmcredentials/credentials_test.go  //国密tls
+```

@@ -1,13 +1,13 @@
 
-# tjfoc-gm
+# gmsm
 GM SM2/3/4 library based on Golang
 =======
 
-
+[![Build Status](https://travis-ci.com/tjfoc/gmsm.svg?branch=master)](https://travis-ci.com/github/tjfoc/gmsm)
 
 
 ## Feature
-tjfoc-gmsm包含以下主要功能
+ gmsm包含以下主要功能
 
     SM2: 国密椭圆曲线算法库
         . 支持Generate Key, Sign, Verify基础操作
