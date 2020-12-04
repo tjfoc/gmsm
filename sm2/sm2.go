@@ -72,10 +72,6 @@ func (priv *PrivateKey) Sign(random io.Reader, msg []byte, signer crypto.SignerO
 	return asn1.Marshal(sm2Signature{r, s})
 }
 
-func (priv *PrivateKey) Decrypt(rand io.Reader, data []byte, opts crypto.DecrypterOpts) ([]byte, error) {
-	return DecryptAsn1(priv, data)
-}
-
 func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 	var sm2Sign sm2Signature
 	_, err := asn1.Unmarshal(sign, &sm2Sign)
@@ -176,8 +172,14 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 	if r.Cmp(N) >= 0 || s.Cmp(N) >= 0 {
 		return false
 	}
-	hash, err := pub.Sm3Digest(msg,uid)
-	e := new(big.Int).SetBytes(hash)
+	if len(uid) == 0 {
+		uid = default_uid
+	}
+	za, err := ZA(pub, uid)
+	if err != nil {
+		return false
+	}
+	e, err := msgHash(za, msg)
 	if err != nil {
 		return false
 	}
@@ -196,10 +198,10 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 	return x.Cmp(r) == 0
 }
 
-/*
+/* 
     za, err := ZA(pub, uid)
 	if err != nil {
-		return
+		return 
 	}
 	e, err := msgHash(za, msg)
 	hash=e.getBytes()
@@ -471,7 +473,7 @@ func CipherMarshal(data []byte) ([]byte, error) {
 }
 
 /*
-ASN1封装的SM2加密数据结构转换转C1|C3|C2拼接格式
+sm2密文asn.1编码格式转C1|C3|C2拼接格式
 */
 func CipherUnmarshal(data []byte) ([]byte, error) {
 	var cipher sm2Cipher
@@ -481,26 +483,20 @@ func CipherUnmarshal(data []byte) ([]byte, error) {
 	}
 	x := cipher.XCoordinate.Bytes()
 	y := cipher.YCoordinate.Bytes()
-
-	if n := len(x); n < 32 {
-		x = append(zeroByteSlice()[:32-n], x...)
-	}
-	if n := len(y); n < 32 {
-		y = append(zeroByteSlice()[:32-n], y...)
-	}
-
 	hash := cipher.HASH
+	if err != nil {
+		return nil, err
+	}
 	cipherText := cipher.CipherText
-
-	res := make([]byte, 1+32+32+len(hash)+len(cipherText))
-
-	// 未压缩标识符
-	res[0] = 0x04
-	copy(res[1:], x)
-	copy(res[1+32:], y)
-	copy(res[1+64:], hash)
-	copy(res[1+96:], cipherText)
-	return res, nil
+	if err != nil {
+		return nil, err
+	}
+	c := []byte{}
+	c = append(c, x...)          // x分量
+	c = append(c, y...)          // y分
+	c = append(c, hash...)       // x分量
+	c = append(c, cipherText...) // y分
+	return append([]byte{0x04}, c...), nil
 }
 
 // keXHat 计算 x = 2^w + (x & (2^w-1))
@@ -622,5 +618,10 @@ var zeroReader = &zr{}
 
 func getLastBit(a *big.Int) uint {
 	return a.Bit(0)
+}
+
+// crypto.Decrypter
+func (priv *PrivateKey) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintext []byte, err error){
+	return Decrypt(priv, msg)
 }
 
