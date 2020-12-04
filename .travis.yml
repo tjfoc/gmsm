@@ -18,6 +18,7 @@ install:
   - go build -v ./sm3
   - go build -v ./sm4
   - go build -v ./x509
+  - go build -v ./pkcs12
   - go build -v ./gmtls/gmcredentials
   - go build -v ./gmtls/gmcredentials/echo
 
@@ -26,6 +27,7 @@ script:
   - go vet ./sm3
   - go vet ./sm4
   - go vet ./x509
+  - go vet ./pkcs12
   - go vet ./gmtls/gmcredentials
   - golint .
   - go test -v ./...

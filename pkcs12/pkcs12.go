@@ -21,6 +21,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/tjfoc/gmsm/sm2"
+x 	"github.com/tjfoc/gmsm/x509"
 	"io/ioutil"
 )
 
@@ -213,7 +214,7 @@ func convertAttribute(attribute *pkcs12Attribute) (key, value string, err error)
 }
 
 // DecodeAll extracts all certificates and a private key from pfxData.
-func DecodeAll(pfxData []byte, password string) (privateKey interface{}, certificate []*sm2.Certificate, err error) {
+func DecodeAll(pfxData []byte, password string) (privateKey interface{}, certificate []*x.Certificate, err error) {
 	encodedPassword, err := bmpString(password)
 	if err != nil {
 		return nil, nil, err
@@ -240,7 +241,7 @@ func DecodeAll(pfxData []byte, password string) (privateKey interface{}, certifi
 			if err != nil {
 				return nil, nil, err
 			}
-			certs, err := sm2.ParseCertificates(certsData)
+			certs, err := x.ParseCertificates(certsData)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -415,7 +416,7 @@ func getSafeContents(p12Data, password []byte) (bags []safeBag, updatedPassword 
 // and contains the certificates, and another that is unencrypted and contains the private key shrouded with 3DES.
 // The private key bag and the end-entity certificate bag have the LocalKeyId attribute set to the SHA-1 fingerprint
 // of the end-entity certificate.
-func Encode(privateKey interface{}, certificate *sm2.Certificate, caCerts []*x509.Certificate, password string) (pfxData []byte, err error) {
+func Encode(privateKey interface{}, certificate *x.Certificate, caCerts []*x509.Certificate, password string) (pfxData []byte, err error) {
 	encodedPassword, err := bmpString(password)
 	if err != nil {
 		return nil, err
@@ -556,7 +557,7 @@ func makeSafeContents(bags []safeBag, password []byte) (ci contentInfo, err erro
 	}
 	return
 }
-func SM2P12Encrypt(certificate *sm2.Certificate, pwd string, priv *sm2.PrivateKey, fileName string) error {
+func SM2P12Encrypt(certificate *x.Certificate, pwd string, priv *sm2.PrivateKey, fileName string) error {
 	pfxDataNew, err := Encode(priv, certificate, nil, pwd)
 	if err != nil {
 		return err
@@ -564,7 +565,7 @@ func SM2P12Encrypt(certificate *sm2.Certificate, pwd string, priv *sm2.PrivateKe
 	err = ioutil.WriteFile(fileName, pfxDataNew, 0666)
 	return err
 }
-func SM2P12Decrypt(fileName string, pwd string) (*sm2.Certificate, *sm2.PrivateKey, error) {
+func SM2P12Decrypt(fileName string, pwd string) (*x.Certificate, *sm2.PrivateKey, error) {
 	pfxData, _ := ioutil.ReadFile(fileName)
 	pv, cer, err := DecodeAll(pfxData, pwd)
 	if err != nil {
