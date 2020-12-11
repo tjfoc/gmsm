@@ -10,21 +10,37 @@ GM SM2/3/4 library based on Golang
 ## Feature
 tjfoc-gm包含以下主要功能
 
-    SM2: 国密椭圆曲线算法库
-        . 支持Generate Key, Sign, Verify基础操作
-        . 支持加密和不加密的pem文件格式(加密方法参见RFC5958, 具体实现参加代码)
-        . 支持证书的生成，证书的读写(接口兼容rsa和ecdsa的证书)
-        . 支持证书链的操作(接口兼容rsa和ecdsa)
-        . 支持crypto.Signer接口
+## Feature 功能支持列表
 
-    SM3: 国密hash算法库
-       . 支持基础的sm3Sum操作
-       . 支持hash.Hash接口
 
-    SM4: 国密分组密码算法库
-        . 支持Generate Key, Encrypt, Decrypt基础操作
-        . 提供Cipher.Block接口
-        . 支持加密和不加密的pem文件格式(加密方法为pem block加密, 具体函数为x509.EncryptPEMBlock)
+
+|  SM2功能   | 支持范围  | 
+|  ----  | ----  |
+| Generate KeyPair  | `是` |
+| Sign  | `是` |
+| Verify | `是` |
+| PEM格式导出 | `私钥/公钥/CSR/证书`|
+| PEM格式导入 | `私钥/公钥/CSR/证书` |
+| PEM文件加密 | RFC5958 |  
+
+|  SM4功能   | 支持范围  | 
+|  ----  | ----  |
+| Generate Key |  `是` |
+| Encrypt, Decrypt | `是` |
+| PEM格式导出 | `是`  |
+| PEM文件加密 | golang: `x509.EncryptPEMBlock` |
+| 分组模式 | ECB/CBC/CFB/OFB/CTR |
+
+
+|  SM3功能   | 支持范围  | 
+|  ----  | ----  |
+| 当前语言Hash接口兼容 | `是` |
+
+## Terminology 术语
+- SM2: 国密椭圆曲线算法库
+- SM3: 国密hash算法库
+- SM4: 国密分组密码算法库
+    - **注意**：CBC模式在国际范围内正逐渐弃用，此安全最佳实践也适用于国密
 
 ## [Usage 使用说明](./API使用说明.md)
 
@@ -52,13 +68,5 @@ tjfoc国密交流
  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  
  See the License for the specific language governing permissions and limitations under the License.
-=======
-
-该分支内容暂不更新，若想使用gmsm请前往本仓库的master分支。
-
-
-关于fabric国密适配实现代码请前行另一仓库，在以下仓库更新
-
-https://github.com/Hyperledger-TWGC/tjfoc-gm
 
 
