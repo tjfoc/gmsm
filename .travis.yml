@@ -28,4 +28,4 @@ script:
   - go vet ./x509
   - go vet ./gmtls/gmcredentials
   - golint .
-  - go test -v ./...
+  - go test -v ./... --bench=. -cover
