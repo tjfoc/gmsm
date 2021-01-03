@@ -17,6 +17,8 @@ package sm2
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
@@ -73,7 +75,7 @@ func TestSm2(t *testing.T) {
 
 }
 
-func BenchmarkSM2(t *testing.B) {
+func BenchmarkSM2Sign(t *testing.B) {
 	t.ReportAllocs()
 	msg := []byte("test")
 	priv, err := GenerateKey(nil) // 生成密钥对
@@ -82,11 +84,60 @@ func BenchmarkSM2(t *testing.B) {
 	}
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		sign, err := priv.Sign(nil, msg, nil) // 签名
+		_, err := priv.Sign(nil, msg, nil) // 签名
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func BenchmarkSM2Verify(t *testing.B) {
+	t.ReportAllocs()
+	msg := []byte("test")
+	priv, err := GenerateKey(nil) // 生成密钥对
+	if err != nil {
+		t.Fatal(err)
+	}
+	sign, err := priv.Sign(nil, msg, nil) // 签名
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
 		priv.Verify(msg, sign) // 密钥验证
+	}
+}
+
+func BenchmarkEcdsaSign(t *testing.B) {
+	t.ReportAllocs()
+	msg := []byte("test")
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		_, _, err := ecdsa.Sign(rand.Reader, priv, msg)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEcdsaVerify(t *testing.B) {
+	t.ReportAllocs()
+	msg := []byte("test")
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, s, err := ecdsa.Sign(rand.Reader, priv, msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		ecdsa.Verify(&priv.PublicKey, msg, r, s)
 	}
 }
 

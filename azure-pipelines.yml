@@ -24,6 +24,6 @@ steps:
   - script: go vet ./sm4
   - script: go vet ./x509
   - script: go vet ./gmtls/gmcredentials
-  - script: go test -v ./...
+  - script: go test -v ./... --bench=. -cover
     displayName: go test recursive
  
