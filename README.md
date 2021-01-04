@@ -1,9 +1,6 @@
 
 # tjfoc-gm
 GM SM2/3/4 library based on Golang
-=======
-
-
 
 [![Build Status](https://travis-ci.com/Hyperledger-TWGC/tjfoc-gm.svg?branch=dev-fabric)](https://travis-ci.com/Hyperledger-TWGC/tjfoc-gm)
 [![Build Status](https://dev.azure.com/Hyperledger/TWGC/_apis/build/status/Hyperledger-TWGC.tjfoc-gm?branchName=dev-fabric)](https://dev.azure.com/Hyperledger/TWGC/_build/latest?definitionId=127&branchName=dev-fabric)
