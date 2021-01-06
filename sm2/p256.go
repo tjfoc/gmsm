@@ -146,7 +146,7 @@ func (curve sm2P256Curve) ScalarMult(x1, y1 *big.Int, k []byte) (*big.Int, *big.
 	sm2P256FromBig(&Y1, y1)
 	scalar := sm2GenrateWNaf(k)
 	scalarReversed := WNafReversed(scalar)
-	sm2P256ScalarMult(&X, &Y, &Z, &X1, &Y1, scalarReversed)
+	X, Y, Z = sm2P256ScalarMult(&X1, &Y1, scalarReversed)
 	return sm2P256ToAffine(&X, &Y, &Z)
 }
 
@@ -155,7 +155,7 @@ func (curve sm2P256Curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
 	var X, Y, Z sm2P256FieldElement
 
 	sm2P256GetScalar(&scalarReversed, k)
-	sm2P256ScalarBaseMult(&X, &Y, &Z, &scalarReversed)
+	X, Y, Z = sm2P256ScalarBaseMult(&scalarReversed)
 	return sm2P256ToAffine(&X, &Y, &Z)
 }
 
@@ -279,14 +279,9 @@ func sm2P256CopyConditional(out, in *sm2P256FieldElement, mask uint32) {
 
 // sm2P256SelectAffinePoint sets {out_x,out_y} to the index'th entry of table.
 // On entry: index < 16, table[0] must be zero.
-func sm2P256SelectAffinePoint(xOut, yOut *sm2P256FieldElement, table []uint32, index uint32) {
-	for i := range xOut {
-		xOut[i] = 0
-	}
-	for i := range yOut {
-		yOut[i] = 0
-	}
-
+func sm2P256SelectAffinePoint(table []uint32, index uint32) (x, y sm2P256FieldElement) {
+	xOut := [9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0}
+	yOut := [9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0}
 	for i := uint32(1); i < 16; i++ {
 		mask := i ^ index
 		mask |= mask >> 2
@@ -302,22 +297,16 @@ func sm2P256SelectAffinePoint(xOut, yOut *sm2P256FieldElement, table []uint32, i
 			table = table[1:]
 		}
 	}
+	return sm2P256FieldElement(xOut), sm2P256FieldElement(yOut)
 }
 
 // sm2P256SelectJacobianPoint sets {out_x,out_y,out_z} to the index'th entry of
 // table.
 // On entry: index < 16, table[0] must be zero.
-func sm2P256SelectJacobianPoint(xOut, yOut, zOut *sm2P256FieldElement, table *[16][3]sm2P256FieldElement, index uint32) {
-	for i := range xOut {
-		xOut[i] = 0
-	}
-	for i := range yOut {
-		yOut[i] = 0
-	}
-	for i := range zOut {
-		zOut[i] = 0
-	}
-
+func sm2P256SelectJacobianPoint(table *[16][3]sm2P256FieldElement, index uint32) (x, y, z sm2P256FieldElement) {
+	xOut := [9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0}
+	yOut := [9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0}
+	zOut := [9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0}
 	// The implicit value at index 0 is all zero. We don't need to perform that
 	// iteration of the loop because we already set out_* to zero.
 	for i := uint32(1); i < 16; i++ {
@@ -336,6 +325,7 @@ func sm2P256SelectJacobianPoint(xOut, yOut, zOut *sm2P256FieldElement, table *[1
 			zOut[j] |= table[i][2][j] & mask
 		}
 	}
+	return sm2P256FieldElement(xOut), sm2P256FieldElement(yOut), sm2P256FieldElement(zOut)
 }
 
 // sm2P256GetBit returns the bit'th bit of scalar.
@@ -346,28 +336,21 @@ func sm2P256GetBit(scalar *[32]uint8, bit uint) uint32 {
 // sm2P256ScalarBaseMult sets {xOut,yOut,zOut} = scalar*G where scalar is a
 // little-endian number. Note that the value of scalar must be less than the
 // order of the group.
-func sm2P256ScalarBaseMult(xOut, yOut, zOut *sm2P256FieldElement, scalar *[32]uint8) {
+func sm2P256ScalarBaseMult(scalar *[32]uint8) (x, y, z sm2P256FieldElement) {
 	nIsInfinityMask := ^uint32(0)
 	var px, py, tx, ty, tz sm2P256FieldElement
 	var pIsNoninfiniteMask, mask, tableOffset uint32
 
-	for i := range xOut {
-		xOut[i] = 0
-	}
-	for i := range yOut {
-		yOut[i] = 0
-	}
-	for i := range zOut {
-		zOut[i] = 0
-	}
-
+	xOut := sm2P256FieldElement([9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0})
+	yOut := sm2P256FieldElement([9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0})
+	zOut := sm2P256FieldElement([9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0})
 	// The loop adds bits at positions 0, 64, 128 and 192, followed by
 	// positions 32,96,160 and 224 and does this 32 times.
 	for i := uint(0); i < 32; i++ {
 		if i != 0 {
-			sm2P256PointDouble(xOut, yOut, zOut, xOut, yOut, zOut)
+			sm2P256PointDouble(&xOut, &yOut, &zOut, &xOut, &yOut, &zOut)
 		}
-		tableOffset = 0
+		tableOffset = uint32(0)
 		for j := uint(0); j <= 32; j += 32 {
 			bit0 := sm2P256GetBit(scalar, 31-i+j)
 			bit1 := sm2P256GetBit(scalar, 95-i+j)
@@ -375,32 +358,33 @@ func sm2P256ScalarBaseMult(xOut, yOut, zOut *sm2P256FieldElement, scalar *[32]ui
 			bit3 := sm2P256GetBit(scalar, 223-i+j)
 			index := bit0 | (bit1 << 1) | (bit2 << 2) | (bit3 << 3)
 
-			sm2P256SelectAffinePoint(&px, &py, sm2P256Precomputed[tableOffset:], index)
-			tableOffset += 30 * 9
+			px, py = sm2P256SelectAffinePoint(sm2P256Precomputed[tableOffset:], index)
+			tableOffset += uint32(270) //30 * 9
 
 			// Since scalar is less than the order of the group, we know that
 			// {xOut,yOut,zOut} != {px,py,1}, unless both are zero, which we handle
 			// below.
-			sm2P256PointAddMixed(&tx, &ty, &tz, xOut, yOut, zOut, &px, &py)
+			sm2P256PointAddMixed(&tx, &ty, &tz, &xOut, &yOut, &zOut, &px, &py)
 			// The result of pointAddMixed is incorrect if {xOut,yOut,zOut} is zero
 			// (a.k.a.  the point at infinity). We handle that situation by
 			// copying the point from the table.
-			sm2P256CopyConditional(xOut, &px, nIsInfinityMask)
-			sm2P256CopyConditional(yOut, &py, nIsInfinityMask)
-			sm2P256CopyConditional(zOut, &sm2P256Factor[1], nIsInfinityMask)
+			sm2P256CopyConditional(&xOut, &px, nIsInfinityMask)
+			sm2P256CopyConditional(&yOut, &py, nIsInfinityMask)
+			sm2P256CopyConditional(&zOut, &sm2P256Factor[1], nIsInfinityMask)
 
 			// Equally, the result is also wrong if the point from the table is
 			// zero, which happens when the index is zero. We handle that by
 			// only copying from {tx,ty,tz} to {xOut,yOut,zOut} if index != 0.
 			pIsNoninfiniteMask = nonZeroToAllOnes(index)
 			mask = pIsNoninfiniteMask & ^nIsInfinityMask
-			sm2P256CopyConditional(xOut, &tx, mask)
-			sm2P256CopyConditional(yOut, &ty, mask)
-			sm2P256CopyConditional(zOut, &tz, mask)
+			sm2P256CopyConditional(&xOut, &tx, mask)
+			sm2P256CopyConditional(&yOut, &ty, mask)
+			sm2P256CopyConditional(&zOut, &tz, mask)
 			// If p was not zero, then n is now non-zero.
 			nIsInfinityMask &^= pIsNoninfiniteMask
 		}
 	}
+	return xOut, yOut, zOut
 }
 
 func sm2P256PointToAffine(xOut, yOut, x, y, z *sm2P256FieldElement) {
@@ -500,10 +484,10 @@ func sm2P256PointAdd(x1, y1, z1, x2, y2, z2, x3, y3, z3 *sm2P256FieldElement) {
 // (x3, y3, z3) = (x1, y1, z1)- (x2, y2, z2)
 func sm2P256PointSub(x1, y1, z1, x2, y2, z2, x3, y3, z3 *sm2P256FieldElement) {
 	var u1, u2, z22, z12, z23, z13, s1, s2, h, h2, r, r2, tm sm2P256FieldElement
-	y:=sm2P256ToBig(y2)
-	zero:=new(big.Int).SetInt64(0)
-	y.Sub(zero,y)
-	sm2P256FromBig(y2,y)
+	y := sm2P256ToBig(y2)
+	zero := new(big.Int).SetInt64(0)
+	y.Sub(zero, y)
+	sm2P256FromBig(y2, y)
 
 	if sm2P256ToBig(z1).Sign() == 0 {
 		sm2P256Dup(x3, x2)
@@ -604,42 +588,40 @@ var sm2P256Zero31 = sm2P256FieldElement{0x7FFFFFF8, 0x3FFFFFFC, 0x800003FC, 0x3F
 // c = a + b
 func sm2P256Add(c, a, b *sm2P256FieldElement) {
 	carry := uint32(0)
-	for i := 0; ; i++ {
+	for i := 0; ; i += 2 {
 		c[i] = a[i] + b[i]
 		c[i] += carry
 		carry = c[i] >> 29
 		c[i] &= bottom29Bits
-		i++
-		if i == 9 {
+		if i+1 == 9 {
 			break
 		}
-		c[i] = a[i] + b[i]
-		c[i] += carry
-		carry = c[i] >> 28
-		c[i] &= bottom28Bits
+		c[i+1] = a[i+1] + b[i+1]
+		c[i+1] += carry
+		carry = c[i+1] >> 28
+		c[i+1] &= bottom28Bits
 	}
 	sm2P256ReduceCarry(c, carry)
 }
 
 // c = a - b
 func sm2P256Sub(c, a, b *sm2P256FieldElement) {
-	var carry uint32
-
-	for i := 0; ; i++ {
+	carry := uint32(0)
+	for i := 0; ; i += 2 {
 		c[i] = a[i] - b[i]
 		c[i] += sm2P256Zero31[i]
 		c[i] += carry
 		carry = c[i] >> 29
 		c[i] &= bottom29Bits
-		i++
-		if i == 9 {
+		//i++
+		if i+1 == 9 {
 			break
 		}
-		c[i] = a[i] - b[i]
-		c[i] += sm2P256Zero31[i]
-		c[i] += carry
-		carry = c[i] >> 28
-		c[i] &= bottom28Bits
+		c[i+1] = a[i+1] - b[i+1]
+		c[i+1] += sm2P256Zero31[i+1]
+		c[i+1] += carry
+		carry = c[i+1] >> 28
+		c[i+1] &= bottom28Bits
 	}
 	sm2P256ReduceCarry(c, carry)
 }
@@ -792,7 +774,7 @@ func sm2P256Square(b, a *sm2P256FieldElement) {
 //   0xffffffff for 0 < x <= 2**31
 //   0 for x == 0 or x > 2**31.
 func nonZeroToAllOnes(x uint32) uint32 {
-	return ((x - 1) >> 31) - 1
+	return ((x - uint32(1)) >> 31) - uint32(1)
 }
 
 var sm2P256Carry = [8 * 9]uint32{
@@ -814,48 +796,50 @@ func sm2P256ReduceCarry(a *sm2P256FieldElement, carry uint32) {
 	a[7] += sm2P256Carry[carry*9+7]
 }
 
-
 func sm2P256ReduceDegree(a *sm2P256FieldElement, b *sm2P256LargeFieldElement) {
 	var tmp [18]uint32
-	var carry, x, xMask uint32
+	var carry, x, xMask, base, base1, base2 uint32
+	//var xl7, xl10, xl11, xl24, xl25, xl28 uint32
+	//var xr1, xr4, xr18, xr21, xr22 uint32
 
 	// tmp
 	// 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  |  9 | 10 ...
 	// 29 | 28 | 29 | 28 | 29 | 28 | 29 | 28 | 29 | 28 | 29 ...
 	tmp[0] = uint32(b[0]) & bottom29Bits
 	tmp[1] = uint32(b[0]) >> 29
-	tmp[1] |= (uint32(b[0]>>32) << 3) & bottom28Bits
+	base2 = uint32(b[0] >> 32)
+	tmp[1] |= (base2 << 3) & bottom28Bits
 	tmp[1] += uint32(b[1]) & bottom28Bits
 	carry = tmp[1] >> 28
 	tmp[1] &= bottom28Bits
-	for i := 2; i < 17; i++ {
-		tmp[i] = (uint32(b[i-2] >> 32)) >> 25
+	for i := 2; i <= 16; i += 2 {
+		base = uint32(b[i-1] >> 32)
+		base1 = uint32(b[i])
+		tmp[i] = (base2) >> 25
 		tmp[i] += (uint32(b[i-1])) >> 28
-		tmp[i] += (uint32(b[i-1]>>32) << 4) & bottom29Bits
-		tmp[i] += uint32(b[i]) & bottom29Bits
+		tmp[i] += (base << 4) & bottom29Bits
+		tmp[i] += base1 & bottom29Bits
 		tmp[i] += carry
 		carry = tmp[i] >> 29
 		tmp[i] &= bottom29Bits
-
-		i++
-		if i == 17 {
+		if i == 16 {
 			break
 		}
-		tmp[i] = uint32(b[i-2]>>32) >> 25
-		tmp[i] += uint32(b[i-1]) >> 29
-		tmp[i] += ((uint32(b[i-1] >> 32)) << 3) & bottom28Bits
-		tmp[i] += uint32(b[i]) & bottom28Bits
-		tmp[i] += carry
-		carry = tmp[i] >> 28
-		tmp[i] &= bottom28Bits
+		tmp[i+1] = base >> 25
+		tmp[i+1] += base1 >> 29
+		base2 = uint32(b[i] >> 32)
+		tmp[i+1] += (base2 << 3) & bottom28Bits
+		tmp[i+1] += uint32(b[i+1]) & bottom28Bits
+		tmp[i+1] += carry
+		carry = tmp[i+1] >> 28
+		tmp[i+1] &= bottom28Bits
 	}
 	tmp[17] = uint32(b[15]>>32) >> 25
 	tmp[17] += uint32(b[16]) >> 29
 	tmp[17] += uint32(b[16]>>32) << 3
 	tmp[17] += carry
 
-	for i := 0; ; i += 2 {
-
+	for i := 0; i <= 8; i += 2 {
 		tmp[i+1] += tmp[i] >> 29
 		x = tmp[i] & bottom29Bits
 		tmp[i] = 0
@@ -866,62 +850,38 @@ func sm2P256ReduceDegree(a *sm2P256FieldElement, b *sm2P256LargeFieldElement) {
 			tmp[i+2] += (x << 7) & bottom29Bits
 			tmp[i+3] += x >> 22
 			if tmp[i+3] < 0x10000000 {
-				set4 = 1
+				set4 = uint32(1)
 				tmp[i+3] += 0x10000000 & xMask
-				tmp[i+3] -= (x << 10) & bottom28Bits
-			} else {
-				tmp[i+3] -= (x << 10) & bottom28Bits
 			}
+			tmp[i+3] -= (x << 10) & bottom28Bits
 			if tmp[i+4] < 0x20000000 {
 				tmp[i+4] += 0x20000000 & xMask
-				tmp[i+4] -= set4 // 借位
-				tmp[i+4] -= x >> 18
 				if tmp[i+5] < 0x10000000 {
 					tmp[i+5] += 0x10000000 & xMask
-					tmp[i+5] -= 1 // 借位
 					if tmp[i+6] < 0x20000000 {
 						set7 = 1
 						tmp[i+6] += 0x20000000 & xMask
-						tmp[i+6] -= 1 // 借位
-					} else {
-						tmp[i+6] -= 1 // 借位
 					}
-				} else {
-					tmp[i+5] -= 1
+					tmp[i+6] -= uint32(1) // 借位
 				}
+				tmp[i+5] -= uint32(1) // 借位
+			}
+			tmp[i+4] -= set4 // 借位
+			tmp[i+4] -= x >> 18
+			tmp[i+8] += (x << 28) & bottom29Bits
+			if tmp[i+8] < 0x20000000 {
+				tmp[i+8] += 0x20000000 & xMask
+				tmp[i+9] += ((x >> 1) - uint32(1)) & xMask
 			} else {
-				tmp[i+4] -= set4 // 借位
-				tmp[i+4] -= x >> 18
+				tmp[i+9] += (x >> 1) & xMask
 			}
 			if tmp[i+7] < 0x10000000 {
 				tmp[i+7] += 0x10000000 & xMask
-				tmp[i+7] -= set7
-				tmp[i+7] -= (x << 24) & bottom28Bits
-				tmp[i+8] += (x << 28) & bottom29Bits
-				if tmp[i+8] < 0x20000000 {
-					tmp[i+8] += 0x20000000 & xMask
-					tmp[i+8] -= 1
-					tmp[i+8] -= x >> 4
-					tmp[i+9] += ((x >> 1) - 1) & xMask
-				} else {
-					tmp[i+8] -= 1
-					tmp[i+8] -= x >> 4
-					tmp[i+9] += (x >> 1) & xMask
-				}
-			} else {
-				tmp[i+7] -= set7 // 借位
-				tmp[i+7] -= (x << 24) & bottom28Bits
-				tmp[i+8] += (x << 28) & bottom29Bits
-				if tmp[i+8] < 0x20000000 {
-					tmp[i+8] += 0x20000000 & xMask
-					tmp[i+8] -= x >> 4
-					tmp[i+9] += ((x >> 1) - 1) & xMask
-				} else {
-					tmp[i+8] -= x >> 4
-					tmp[i+9] += (x >> 1) & xMask
-				}
+				tmp[i+8] -= uint32(1)
 			}
-
+			tmp[i+8] -= x >> 4
+			tmp[i+7] -= set7 // 借位
+			tmp[i+7] -= (x << 24) & bottom28Bits
 		}
 
 		if i+1 == 9 {
@@ -939,68 +899,53 @@ func sm2P256ReduceDegree(a *sm2P256FieldElement, b *sm2P256LargeFieldElement) {
 			tmp[i+3] += (x << 7) & bottom28Bits
 			tmp[i+4] += x >> 21
 			if tmp[i+4] < 0x20000000 {
-				set5 = 1
+				set5 = uint32(1)
 				tmp[i+4] += 0x20000000 & xMask
-				tmp[i+4] -= (x << 11) & bottom29Bits
-			} else {
-				tmp[i+4] -= (x << 11) & bottom29Bits
 			}
+			tmp[i+4] -= (x << 11) & bottom29Bits
 			if tmp[i+5] < 0x10000000 {
 				tmp[i+5] += 0x10000000 & xMask
-				tmp[i+5] -= set5 // 借位
-				tmp[i+5] -= x >> 18
 				if tmp[i+6] < 0x20000000 {
 					tmp[i+6] += 0x20000000 & xMask
-					tmp[i+6] -= 1 // 借位
 					if tmp[i+7] < 0x10000000 {
-						set8 = 1
+						set8 = uint32(1)
 						tmp[i+7] += 0x10000000 & xMask
-						tmp[i+7] -= 1 // 借位
-					} else {
-						tmp[i+7] -= 1 // 借位
 					}
-				} else {
-					tmp[i+6] -= 1 // 借位
+					tmp[i+7] -= uint32(1) // 借位
 				}
-			} else {
-				tmp[i+5] -= set5 // 借位
-				tmp[i+5] -= x >> 18
+				tmp[i+6] -= uint32(1) // 借位
 			}
+			tmp[i+5] -= set5 // 借位
+			tmp[i+5] -= x >> 18
 			if tmp[i+8] < 0x20000000 {
-				set9 = 1
+				set9 = uint32(1)
 				tmp[i+8] += 0x20000000 & xMask
-				tmp[i+8] -= set8
-				tmp[i+8] -= (x << 25) & bottom29Bits
-			} else {
-				tmp[i+8] -= set8
-				tmp[i+8] -= (x << 25) & bottom29Bits
 			}
+			tmp[i+8] -= set8
+			tmp[i+8] -= (x << 25) & bottom29Bits
 			if tmp[i+9] < 0x10000000 {
 				tmp[i+9] += 0x10000000 & xMask
-				tmp[i+9] -= set9 // 借位
-				tmp[i+9] -= x >> 4
-				tmp[i+10] += (x - 1) & xMask
+				tmp[i+10] += (x - uint32(1)) & xMask
 			} else {
-				tmp[i+9] -= set9 // 借位
-				tmp[i+9] -= x >> 4
 				tmp[i+10] += x & xMask
 			}
+			tmp[i+9] -= set9 // 借位
+			tmp[i+9] -= x >> 4
 		}
 	}
 
 	carry = uint32(0)
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 8; i += 2 {
 		a[i] = tmp[i+9]
 		a[i] += carry
 		a[i] += (tmp[i+10] << 28) & bottom29Bits
 		carry = a[i] >> 29
 		a[i] &= bottom29Bits
 
-		i++
-		a[i] = tmp[i+9] >> 1
-		a[i] += carry
-		carry = a[i] >> 28
-		a[i] &= bottom28Bits
+		a[i+1] = tmp[i+10] >> 1
+		a[i+1] += carry
+		carry = a[i+1] >> 28
+		a[i+1] &= bottom28Bits
 	}
 	a[8] = tmp[17]
 	a[8] += carry
@@ -1018,21 +963,21 @@ func sm2P256Dup(b, a *sm2P256FieldElement) {
 func sm2P256FromBig(X *sm2P256FieldElement, a *big.Int) {
 	x := new(big.Int).Lsh(a, 257)
 	x.Mod(x, sm2P256.P)
-	for i := 0; i < 9; i++ {
+	for i := 0; i < 9; i += 2 {
 		if bits := x.Bits(); len(bits) > 0 {
 			X[i] = uint32(bits[0]) & bottom29Bits
 		} else {
-			X[i] = 0
+			X[i] = uint32(0)
 		}
 		x.Rsh(x, 29)
-		i++
-		if i == 9 {
+		//i++
+		if i+1 == 9 {
 			break
 		}
 		if bits := x.Bits(); len(bits) > 0 {
-			X[i] = uint32(bits[0]) & bottom28Bits
+			X[i+1] = uint32(bits[0]) & bottom28Bits
 		} else {
-			X[i] = 0
+			X[i+1] = uint32(0)
 		}
 		x.Rsh(x, 28)
 	}
@@ -1064,7 +1009,7 @@ func WNafReversed(wnaf []int8) []int8 {
 	return wnafRev
 }
 func sm2GenrateWNaf(b []byte) []int8 {
-	n:= new(big.Int).SetBytes(b)
+	n := new(big.Int).SetBytes(b)
 	var k *big.Int
 	if n.Cmp(sm2P256.N) >= 0 {
 		n.Mod(n, sm2P256.N)
@@ -1113,14 +1058,14 @@ func boolToUint(b bool) uint {
 	}
 	return 0
 }
-func abs(a int8) uint32{
-	if a<0 {
+func abs(a int8) uint32 {
+	if a < 0 {
 		return uint32(-a)
 	}
 	return uint32(a)
 }
 
-func sm2P256ScalarMult(xOut, yOut, zOut, x, y *sm2P256FieldElement, scalar []int8) {
+func sm2P256ScalarMult(x, y *sm2P256FieldElement, scalar []int8) (x1, y1, z1 sm2P256FieldElement) {
 	var precomp [16][3]sm2P256FieldElement
 	var px, py, pz, tx, ty, tz sm2P256FieldElement
 	var nIsInfinityMask, index, pIsNoninfiniteMask, mask uint32
@@ -1135,48 +1080,43 @@ func sm2P256ScalarMult(xOut, yOut, zOut, x, y *sm2P256FieldElement, scalar []int
 		sm2P256PointAddMixed(&precomp[i+1][0], &precomp[i+1][1], &precomp[i+1][2], &precomp[i][0], &precomp[i][1], &precomp[i][2], x, y)
 	}
 
-	for i := range xOut {
-		xOut[i] = 0
-	}
-	for i := range yOut {
-		yOut[i] = 0
-	}
-	for i := range zOut {
-		zOut[i] = 0
-	}
+	xOut := sm2P256FieldElement([9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0})
+	yOut := sm2P256FieldElement([9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0})
+	zOut := sm2P256FieldElement([9]uint32{0, 0, 0, 0, 0, 0, 0, 0, 0})
 	nIsInfinityMask = ^uint32(0)
 	var zeroes int16
-	for i := 0; i<len(scalar); i++ {
-		if scalar[i] ==0{
+	for i := 0; i < len(scalar); i++ {
+		if scalar[i] == 0 {
 			zeroes++
 			continue
 		}
-		if(zeroes>0){
-			for  ;zeroes>0;zeroes-- {
-				sm2P256PointDouble(xOut, yOut, zOut, xOut, yOut, zOut)
+		if zeroes > 0 {
+			for ; zeroes > 0; zeroes-- {
+				sm2P256PointDouble(&xOut, &yOut, &zOut, &xOut, &yOut, &zOut)
 			}
 		}
 		index = abs(scalar[i])
-		sm2P256PointDouble(xOut, yOut, zOut, xOut, yOut, zOut)
-		sm2P256SelectJacobianPoint(&px, &py, &pz, &precomp, index)
+		sm2P256PointDouble(&xOut, &yOut, &zOut, &xOut, &yOut, &zOut)
+		px, py, pz = sm2P256SelectJacobianPoint(&precomp, index)
 		if scalar[i] > 0 {
-			sm2P256PointAdd(xOut, yOut, zOut, &px, &py, &pz, &tx, &ty, &tz)
+			sm2P256PointAdd(&xOut, &yOut, &zOut, &px, &py, &pz, &tx, &ty, &tz)
 		} else {
-			sm2P256PointSub(xOut, yOut, zOut, &px, &py, &pz, &tx, &ty, &tz)
+			sm2P256PointSub(&xOut, &yOut, &zOut, &px, &py, &pz, &tx, &ty, &tz)
 		}
-		sm2P256CopyConditional(xOut, &px, nIsInfinityMask)
-		sm2P256CopyConditional(yOut, &py, nIsInfinityMask)
-		sm2P256CopyConditional(zOut, &pz, nIsInfinityMask)
+		sm2P256CopyConditional(&xOut, &px, nIsInfinityMask)
+		sm2P256CopyConditional(&yOut, &py, nIsInfinityMask)
+		sm2P256CopyConditional(&zOut, &pz, nIsInfinityMask)
 		pIsNoninfiniteMask = nonZeroToAllOnes(index)
 		mask = pIsNoninfiniteMask & ^nIsInfinityMask
-		sm2P256CopyConditional(xOut, &tx, mask)
-		sm2P256CopyConditional(yOut, &ty, mask)
-		sm2P256CopyConditional(zOut, &tz, mask)
+		sm2P256CopyConditional(&xOut, &tx, mask)
+		sm2P256CopyConditional(&yOut, &ty, mask)
+		sm2P256CopyConditional(&zOut, &tz, mask)
 		nIsInfinityMask &^= pIsNoninfiniteMask
 	}
-	if(zeroes>0){
-		for  ;zeroes>0;zeroes-- {
-			sm2P256PointDouble(xOut, yOut, zOut, xOut, yOut, zOut)
+	if zeroes > 0 {
+		for ; zeroes > 0; zeroes-- {
+			sm2P256PointDouble(&xOut, &yOut, &zOut, &xOut, &yOut, &zOut)
 		}
 	}
+	return xOut, yOut, zOut
 }
