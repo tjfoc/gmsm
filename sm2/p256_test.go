@@ -330,14 +330,13 @@ func BenchmarkSm2P256ReduceDegree(t *testing.B) {
 }
 
 func BenchmarkSm2P256FromBig(t *testing.B) {
-	var X sm2P256FieldElement
 	var a *big.Int
 	a = big.NewInt(1)
 	t.ReportAllocs()
 
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		sm2P256FromBig(X, a)
+		sm2P256FromBig(a)
 	}
 }
 
@@ -359,5 +358,53 @@ func BenchmarkSm2P256ScalarMult(t *testing.B) {
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256ScalarMult(X, Y, scalar)
+	}
+}
+
+func BenchmarkBigIntAdd(t *testing.B) {
+	x, _ := new(big.Int).SetString("32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7", 16)
+	y, _ := new(big.Int).SetString("BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", 16)
+
+	t.ReportAllocs()
+
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		x.Add(x, y)
+	}
+}
+
+func BenchmarkBigIntMul(t *testing.B) {
+	x, _ := new(big.Int).SetString("32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7", 16)
+	y, _ := new(big.Int).SetString("BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", 16)
+
+	t.ReportAllocs()
+
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		x.Mul(x, y)
+	}
+}
+
+func BenchmarkBigIntMulWithTransToArray(t *testing.B) {
+	x, _ := new(big.Int).SetString("32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7", 16)
+	y, _ := new(big.Int).SetString("BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", 16)
+
+	t.ReportAllocs()
+
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		sm2P256ToBig(sm2P256Mul(sm2P256FromBig(x), sm2P256FromBig(y)))
+	}
+}
+
+func BenchmarkBigIntSub(t *testing.B) {
+	x, _ := new(big.Int).SetString("32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7", 16)
+	y, _ := new(big.Int).SetString("BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", 16)
+
+	t.ReportAllocs()
+
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		x.Sub(x, y)
 	}
 }
