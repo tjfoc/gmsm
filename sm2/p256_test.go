@@ -39,11 +39,11 @@ func BenchmarkSm2P256PointAddMixed(t *testing.B) {
 	t.ReportAllocs()
 	initP256Sm2()
 	var x1, y1, z1, x2, y2 sm2P256FieldElement
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
-	x2=sm2P256FromBig(X2)
-	y2=sm2P256FromBig(Y2)
-	z1=sm2P256FromBig(new(big.Int).SetInt64(1))
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
+	x2 = sm2P256FromBig(X2)
+	y2 = sm2P256FromBig(Y2)
+	z1 = sm2P256FromBig(new(big.Int).SetInt64(1))
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256PointAddMixed(x1, y1, z1, x2, y2)
@@ -55,9 +55,9 @@ func BenchmarkSm2P256CopyConditional(t *testing.B) {
 	initP256Sm2()
 	var x1, y1 sm2P256FieldElement
 	var mask uint32
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
-	mask=uint32(K.Uint64())
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
+	mask = uint32(K.Uint64())
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256CopyConditional(x1, y1, mask)
@@ -202,7 +202,7 @@ func BenchmarkSm2P256SelectJacobianPoint(t *testing.B) {
 	}
 	t.ResetTimer()
 	initP256Sm2()
-	scalar=uint32(K.Uint64())
+	scalar = uint32(K.Uint64())
 	for i := 0; i < t.N; i++ {
 		sm2P256SelectAffinePoint(sm2P256Precomputed[0:], scalar)
 	}
@@ -214,7 +214,7 @@ func BenchmarkSm2P256GetBit(t *testing.B) {
 	t.ReportAllocs()
 	initP256Sm2()
 	var b [32]byte
-	scalarBytes:=K.Bytes()
+	scalarBytes := K.Bytes()
 	for i, v := range scalarBytes {
 		b[len(scalarBytes)-(1+i)] = v
 	}
@@ -228,7 +228,7 @@ func BenchmarkSm2P256ScalarBaseMult(t *testing.B) {
 	t.ReportAllocs()
 	initP256Sm2()
 	var b [32]byte
-	scalarBytes:=K.Bytes()
+	scalarBytes := K.Bytes()
 	for i, v := range scalarBytes {
 		b[len(scalarBytes)-(1+i)] = v
 	}
@@ -241,11 +241,11 @@ func BenchmarkSm2P256ScalarBaseMult(t *testing.B) {
 func BenchmarkSm2P256PointToAffine(t *testing.B) {
 	var x, y, z sm2P256FieldElement
 	t.ReportAllocs()
-    initP256Sm2()
-	 
-	x=sm2P256FromBig(X1)
-	y=sm2P256FromBig(Y1)
-	z=sm2P256FromBig(new(big.Int).SetInt64(1))
+	initP256Sm2()
+
+	x = sm2P256FromBig(X1)
+	y = sm2P256FromBig(Y1)
+	z = sm2P256FromBig(new(big.Int).SetInt64(1))
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256PointToAffine(x, y, z)
@@ -256,9 +256,9 @@ func BenchmarkSm2P256ToAffine(t *testing.B) {
 	var x, y, z sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x=sm2P256FromBig(X1)
-	y=sm2P256FromBig(Y1)
-	z=sm2P256FromBig(new(big.Int).SetInt64(1))
+	x = sm2P256FromBig(X1)
+	y = sm2P256FromBig(Y1)
+	z = sm2P256FromBig(new(big.Int).SetInt64(1))
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256ToAffine(x, y, z)
@@ -269,12 +269,12 @@ func BenchmarkSm2P256PointAdd(t *testing.B) {
 	var x1, y1, z1, x2, y2, z2 sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
-	x2=sm2P256FromBig(X2)
-	y2=sm2P256FromBig(Y2)
-	z1=sm2P256FromBig(new(big.Int).SetInt64(1))
-	z2=sm2P256FromBig(new(big.Int).SetInt64(1))
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
+	x2 = sm2P256FromBig(X2)
+	y2 = sm2P256FromBig(Y2)
+	z1 = sm2P256FromBig(new(big.Int).SetInt64(1))
+	z2 = sm2P256FromBig(new(big.Int).SetInt64(1))
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256PointAdd(x1, y1, z1, x2, y2, z2)
@@ -285,12 +285,12 @@ func BenchmarkSm2P256PointSub(t *testing.B) {
 	var x1, y1, z1, x2, y2, z2 sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
-	x2=sm2P256FromBig(X2)
-	y2=sm2P256FromBig(Y2)
-	z1=sm2P256FromBig(new(big.Int).SetInt64(1))
-	z2=sm2P256FromBig(new(big.Int).SetInt64(1))
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
+	x2 = sm2P256FromBig(X2)
+	y2 = sm2P256FromBig(Y2)
+	z1 = sm2P256FromBig(new(big.Int).SetInt64(1))
+	z2 = sm2P256FromBig(new(big.Int).SetInt64(1))
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256PointSub(x1, y1, z1, x2, y2, z2)
@@ -301,12 +301,12 @@ func BenchmarkSm2P256Cal(t *testing.B) {
 	var x1, y1, z1, x2, y2, z2 sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
-	x2=sm2P256FromBig(X2)
-	y2=sm2P256FromBig(Y2)
-	z1=sm2P256FromBig(new(big.Int).SetInt64(1))
-	z2=sm2P256FromBig(new(big.Int).SetInt64(1))
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
+	x2 = sm2P256FromBig(X2)
+	y2 = sm2P256FromBig(Y2)
+	z1 = sm2P256FromBig(new(big.Int).SetInt64(1))
+	z2 = sm2P256FromBig(new(big.Int).SetInt64(1))
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256Cal(x1, y1, z1, x2, y2, z2)
@@ -317,9 +317,9 @@ func BenchmarkSm256PointDouble(t *testing.B) {
 	var x1, y1, z1 sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
-	z1=sm2P256FromBig(new(big.Int).SetInt64(1))
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
+	z1 = sm2P256FromBig(new(big.Int).SetInt64(1))
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256PointDouble(x1, y1, z1)
@@ -330,9 +330,9 @@ func BenchmarkSm2P256Add(t *testing.B) {
 	var x1, y1 sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
-	 
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
+
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256Add(x1, y1)
@@ -343,8 +343,8 @@ func BenchmarkSm2P256Sub(t *testing.B) {
 	var x1, y1 sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256Sub(x1, y1)
@@ -355,9 +355,9 @@ func BenchmarkSm2P256Mul(t *testing.B) {
 	var x1, y1 sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
-	y1=sm2P256FromBig(Y1)
-	 
+	x1 = sm2P256FromBig(X1)
+	y1 = sm2P256FromBig(Y1)
+
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256Mul(x1, y1)
@@ -368,7 +368,7 @@ func BenchmarkSm2P256Square(t *testing.B) {
 	var x1 sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
+	x1 = sm2P256FromBig(X1)
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256Square(x1)
@@ -380,7 +380,7 @@ func BenchmarkSm2P256ReduceCarry(t *testing.B) {
 	var carry uint32
 	t.ReportAllocs()
 	initP256Sm2()
-	x1=sm2P256FromBig(X1)
+	x1 = sm2P256FromBig(X1)
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256ReduceCarry(x1, carry)
@@ -400,9 +400,9 @@ func BenchmarkSm2P256ReduceDegree(t *testing.B) {
 func BenchmarkSm2P256FromBig(t *testing.B) {
 	var a *big.Int
 	initP256Sm2()
-	a =new(big.Int).Set(K)
+	a = new(big.Int).Set(K)
 	t.ReportAllocs()
-   
+
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256FromBig(a)
@@ -413,7 +413,7 @@ func BenchmarkSm2P256ToBig(t *testing.B) {
 	var X sm2P256FieldElement
 	t.ReportAllocs()
 	initP256Sm2()
-	X=sm2P256FromBig(K)
+	X = sm2P256FromBig(K)
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
 		sm2P256ToBig(X)
@@ -425,8 +425,8 @@ func BenchmarkSm2P256ScalarMult(t *testing.B) {
 	var scalar []int8
 	t.ReportAllocs()
 	initP256Sm2()
-	X=sm2P256FromBig(X1)
-	Y=sm2P256FromBig(Y2)
+	X = sm2P256FromBig(X1)
+	Y = sm2P256FromBig(Y2)
 
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
@@ -469,7 +469,10 @@ func BenchmarkBigIntMulWithTransToArray(t *testing.B) {
 
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		sm2P256ToBig(sm2P256Mul(sm2P256FromBig(x), sm2P256FromBig(y)))
+		xa := sm2P256FromBig(x)
+		xb := sm2P256FromBig(y)
+		xz := sm2P256Mul(xa, xb)
+		sm2P256ToBig(xz)
 	}
 }
 
@@ -485,34 +488,34 @@ func BenchmarkBigIntSub(t *testing.B) {
 		x.Sub(x, y)
 	}
 }
-func BenchmarkScalar3(t *testing.B){
+func BenchmarkScalar3(t *testing.B) {
 	initP256Sm2()
 	t.ReportAllocs()
 	initP256Sm2()
 	d := sm2P256FromBig(D1)
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		p256Scalar3(d)
+		sm2P256Scalar3(d)
 	}
 }
-func BenchmarkScalar4(t *testing.B){
+func BenchmarkScalar4(t *testing.B) {
 	initP256Sm2()
 	t.ReportAllocs()
 	initP256Sm2()
 	d := sm2P256FromBig(D1)
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		p256Scalar4(d)
+		sm2P256Scalar4(d)
 	}
 }
-func BenchmarkScalar8(t *testing.B){
+func BenchmarkScalar8(t *testing.B) {
 	initP256Sm2()
 	t.ReportAllocs()
 	initP256Sm2()
 	d := sm2P256FromBig(D1)
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		p256Scalar8(d)
+		sm2P256Scalar8(d)
 	}
 }
 
