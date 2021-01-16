@@ -11,7 +11,7 @@ func Decompress(a []byte) *PublicKey {
 	P256Sm2()
 	x := new(big.Int).SetBytes(a[1:])
 	curve := sm2P256
-	xx = sm2P256FromBig(xx, x)
+	xx = sm2P256FromBig(x)
 	xx3 = sm2P256Square(xx)      // x3 = x ^ 2
 	xx3 = sm2P256Mul(xx3, xx)    // x3 = x ^ 2 * x
 	aa = sm2P256Mul(curve.a, xx) // a = a * x
