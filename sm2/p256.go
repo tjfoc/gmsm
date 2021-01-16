@@ -1138,3 +1138,92 @@ func sm2P256Scalar8(in sm2P256FieldElement) sm2P256FieldElement {
 
 	return sm2P256ReduceCarry(in, carry)
 }
+// p256Scalar3 sets out=3*out.
+//
+// On entry: out[0,2,...] < 2**30, out[1,3,...] < 2**29.
+// On exit: out[0,2,...] < 2**30, out[1,3,...] < 2**29.
+func p256Scalar3(in sm2P256FieldElement) (sm2P256FieldElement){
+	var out sm2P256FieldElement
+	out=in
+	var carry uint32
+
+	for i := 0; ; i++ {
+		out[i] *= 3
+		out[i] += carry
+		carry = out[i] >> 29
+		out[i] &= bottom29Bits
+
+		i++
+		if i == 9 {
+			break
+		}
+
+		out[i] *= 3
+		out[i] += carry
+		carry = out[i] >> 28
+		out[i] &= bottom28Bits
+	}
+
+	return sm2P256ReduceCarry(out, carry)
+}
+
+// p256Scalar4 sets out=4*out.
+//
+// On entry: out[0,2,...] < 2**30, out[1,3,...] < 2**29.
+// On exit: out[0,2,...] < 2**30, out[1,3,...] < 2**29.
+func p256Scalar4(in sm2P256FieldElement)(sm2P256FieldElement) {
+	var carry, nextCarry uint32
+	var out sm2P256FieldElement
+	out=in
+	for i := 0; ; i++ {
+		nextCarry = out[i] >> 27
+		out[i] <<= 2
+		out[i] &= bottom29Bits
+		out[i] += carry
+		carry = nextCarry + (out[i] >> 29)
+		out[i] &= bottom29Bits
+
+		i++
+		if i == 9 {
+			break
+		}
+		nextCarry = out[i] >> 26
+		out[i] <<= 2
+		out[i] &= bottom28Bits
+		out[i] += carry
+		carry = nextCarry + (out[i] >> 28)
+		out[i] &= bottom28Bits
+	}
+	return   sm2P256ReduceCarry(out, carry)
+}
+
+// p256Scalar8 sets out=8*out.
+//
+// On entry: out[0,2,...] < 2**30, out[1,3,...] < 2**29.
+// On exit: out[0,2,...] < 2**30, out[1,3,...] < 2**29.
+func p256Scalar8(in sm2P256FieldElement) (sm2P256FieldElement){
+	var carry, nextCarry uint32
+	var out sm2P256FieldElement
+	out=in
+	for i := 0; ; i++ {
+		nextCarry = out[i] >> 26
+		out[i] <<= 3
+		out[i] &= bottom29Bits
+		out[i] += carry
+		carry = nextCarry + (out[i] >> 29)
+		out[i] &= bottom29Bits
+
+		i++
+		if i == 9 {
+			break
+		}
+		nextCarry = out[i] >> 25
+		out[i] <<= 3
+		out[i] &= bottom28Bits
+		out[i] += carry
+		carry = nextCarry + (out[i] >> 28)
+		out[i] &= bottom28Bits
+	}
+
+    return	sm2P256ReduceCarry(out, carry)
+}
