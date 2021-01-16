@@ -515,29 +515,30 @@ func BenchmarkScalar8(t *testing.B){
 		p256Scalar8(d)
 	}
 }
-func Test_Scalar(t *testing.T) {
-	initP256Sm2()
-	d := sm2P256FromBig(D1)
-	scalar3 := p256Scalar3(d)
-	scalar4 := p256Scalar4(d)
-	scalar8 := p256Scalar8(d)
-	out3 := sm2P256Scalar(d, 3)
-	out4 := sm2P256Scalar(d, 4)
-	out8 := sm2P256Scalar(d, 8)
-	s3 := sm2P256ToBig(scalar3)
-	s4 := sm2P256ToBig(scalar4)
-	s8 := sm2P256ToBig(scalar8)
-	o3 := sm2P256ToBig(out3)
-	o4 := sm2P256ToBig(out4)
-	o8 := sm2P256ToBig(out8)
-	if s3.Cmp(o3) != 0 {
-		t.Errorf("Scalar3 error")
-	}
-	if s4.Cmp(o4) != 0 {
-		t.Errorf("Scalar4 error")
-	}
-	if s8.Cmp(o8) != 0 {
-		t.Errorf("Scalar8 error")
-	}
 
-}
+// func Test_Scalar(t *testing.T) {
+// 	initP256Sm2()
+// 	d := sm2P256FromBig(D1)
+// 	scalar3 := p256Scalar3(d)
+// 	scalar4 := p256Scalar4(d)
+// 	scalar8 := p256Scalar8(d)
+// 	out3 := sm2P256Scalar(d, 3)
+// 	out4 := sm2P256Scalar(d, 4)
+// 	out8 := sm2P256Scalar(d, 8)
+// 	s3 := sm2P256ToBig(scalar3)
+// 	s4 := sm2P256ToBig(scalar4)
+// 	s8 := sm2P256ToBig(scalar8)
+// 	o3 := sm2P256ToBig(out3)
+// 	o4 := sm2P256ToBig(out4)
+// 	o8 := sm2P256ToBig(out8)
+// 	if s3.Cmp(o3) != 0 {
+// 		t.Errorf("Scalar3 error")
+// 	}
+// 	if s4.Cmp(o4) != 0 {
+// 		t.Errorf("Scalar4 error")
+// 	}
+// 	if s8.Cmp(o8) != 0 {
+// 		t.Errorf("Scalar8 error")
+// 	}
+
+// }
