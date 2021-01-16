@@ -388,7 +388,7 @@ func sm2P256PointToAffine(x, y, z sm2P256FieldElement) (rsx, rsy sm2P256FieldEle
 	zz := sm2P256ToBig(z)
 	zz.ModInverse(zz, sm2P256.P)
 	zInv = sm2P256FromBig(zz)
-
+	//zInv = sm2p256Invert(z)
 	zInvSq = sm2P256Square(zInv)
 	xOut = sm2P256Mul(x, zInvSq)
 	zInv = sm2P256Mul(zInv, zInvSq)
@@ -498,14 +498,16 @@ func sm2P256PointDouble(x, y, z sm2P256FieldElement) (a, b, c sm2P256FieldElemen
 
 	y4 = sm2P256Square(y) // y4 = y ^ 2
 	//y4 = sm2P256Mul(y4, y4, y) // y4 = y ^ 3
-	y4 = sm2P256Square(y4)    // y4 = y ^ 4
-	y4 = sm2P256Scalar(y4, 8) // y4 = 8 * y ^ 4
-
+	y4 = sm2P256Square(y4) // y4 = y ^ 4
+	//y4 = sm2P256Scalar(y4, 8) // y4 = 8 * y ^ 4
+	y4 = sm2P256Scalar8(y4)
 	s = sm2P256Mul(x, y2)
-	s = sm2P256Scalar(s, 4) // s = 4 * x * y ^ 2
+	//s = sm2P256Scalar(s, 4) // s = 4 * x * y ^ 2
+	s = sm2P256Scalar4(s)
 
 	m = x2
-	m = sm2P256Scalar(m, 3)
+	//m = sm2P256Scalar(m, 3)
+	m = sm2P256Scalar3(m)
 	az4 = sm2P256Mul(sm2P256.a, z4)
 	m = sm2P256Add(m, az4) // m = 3 * x ^ 2 + a * z ^ 4
 
@@ -613,7 +615,7 @@ func sm2P256Mul(a, b sm2P256FieldElement) (x sm2P256FieldElement) {
 		uint64(a[6])*(uint64(b[1])<<0) +
 		uint64(a[7])*(uint64(b[0])<<0)
 	// tmp[8] has the greatest value but doesn't overflow. See logic in
-	// p256Square.
+	// sm2P256Square.
 	tmp[8] = uint64(a[0])*(uint64(b[8])<<0) +
 		uint64(a[1])*(uint64(b[7])<<1) +
 		uint64(a[2])*(uint64(b[6])<<0) +
@@ -1060,4 +1062,79 @@ func sm2P256ScalarMult(x, y sm2P256FieldElement, scalar []int8) (x1, y1, z1 sm2P
 		}
 	}
 	return xOut, yOut, zOut
+}
+
+func sm2P256Scalar3(in sm2P256FieldElement) sm2P256FieldElement {
+	var carry uint32
+
+	for i := 0; ; i++ {
+		in[i] *= 3
+		in[i] += carry
+		carry = in[i] >> 29
+		in[i] &= bottom29Bits
+
+		i++
+		if i == 9 {
+			break
+		}
+
+		in[i] *= 3
+		in[i] += carry
+		carry = in[i] >> 28
+		in[i] &= bottom28Bits
+	}
+
+	return sm2P256ReduceCarry(in, carry)
+}
+
+func sm2P256Scalar4(in sm2P256FieldElement) sm2P256FieldElement {
+	var carry, nextCarry uint32
+
+	for i := 0; ; i++ {
+		nextCarry = in[i] >> 27
+		in[i] <<= 2
+		in[i] &= bottom29Bits
+		in[i] += carry
+		carry = nextCarry + (in[i] >> 29)
+		in[i] &= bottom29Bits
+
+		i++
+		if i == 9 {
+			break
+		}
+		nextCarry = in[i] >> 26
+		in[i] <<= 2
+		in[i] &= bottom28Bits
+		in[i] += carry
+		carry = nextCarry + (in[i] >> 28)
+		in[i] &= bottom28Bits
+	}
+
+	return sm2P256ReduceCarry(in, carry)
+}
+
+func sm2P256Scalar8(in sm2P256FieldElement) sm2P256FieldElement {
+	var carry, nextCarry uint32
+
+	for i := 0; ; i++ {
+		nextCarry = in[i] >> 26
+		in[i] <<= 3
+		in[i] &= bottom29Bits
+		in[i] += carry
+		carry = nextCarry + (in[i] >> 29)
+		in[i] &= bottom29Bits
+
+		i++
+		if i == 9 {
+			break
+		}
+		nextCarry = in[i] >> 25
+		in[i] <<= 3
+		in[i] &= bottom28Bits
+		in[i] += carry
+		carry = nextCarry + (in[i] >> 28)
+		in[i] &= bottom28Bits
+	}
+
+	return sm2P256ReduceCarry(in, carry)
 }
