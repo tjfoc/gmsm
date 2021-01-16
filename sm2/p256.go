@@ -436,7 +436,8 @@ func sm2P256Scalar(b sm2P256FieldElement, a int) (x sm2P256FieldElement) {
 		return sm2P256Add(sm2P256Scalar3(b), sm2P256Scalar3(b))
 	}
 	if a == 7 {
-		return sm2P256Add(sm2P256Scalar4(b), sm2P256Scalar3(b))
+		return sm2P256Sub(sm2P256Scalar8(b), b)
+		//return sm2P256Add(sm2P256Scalar4(b), sm2P256Scalar3(b))
 	}
 	if a == 8 {
 		return sm2P256Scalar8(b)
@@ -1098,79 +1099,77 @@ func sm2P256ScalarMult(x, y sm2P256FieldElement, scalar []int8) (x1, y1, z1 sm2P
 	return xOut, yOut, zOut
 }
 
+func sm2P256Scalar3(in sm2P256FieldElement) sm2P256FieldElement {
+	var carry uint32
 
-func sm2P256Scalar3(in sm2P256FieldElement) sm2P256FieldElement {	
-	var carry uint32	
+	for i := 0; ; i++ {
+		in[i] *= 3
+		in[i] += carry
+		carry = in[i] >> 29
+		in[i] &= bottom29Bits
 
+		i++
+		if i == 9 {
+			break
+		}
 
-	for i := 0; ; i++ {	
-		in[i] *= 3	
-		in[i] += carry	
-		carry = in[i] >> 29	
-		in[i] &= bottom29Bits	
+		in[i] *= 3
+		in[i] += carry
+		carry = in[i] >> 28
+		in[i] &= bottom28Bits
+	}
 
-		i++	
-		if i == 9 {	
-			break	
-		}	
+	return sm2P256ReduceCarry(in, carry)
+}
 
-		in[i] *= 3	
-		in[i] += carry	
-		carry = in[i] >> 28	
-		in[i] &= bottom28Bits	
-	}	
+func sm2P256Scalar4(in sm2P256FieldElement) sm2P256FieldElement {
+	var carry, nextCarry uint32
 
-	return sm2P256ReduceCarry(in, carry)	
-}	
+	for i := 0; ; i++ {
+		nextCarry = in[i] >> 27
+		in[i] <<= 2
+		in[i] &= bottom29Bits
+		in[i] += carry
+		carry = nextCarry + (in[i] >> 29)
+		in[i] &= bottom29Bits
 
-func sm2P256Scalar4(in sm2P256FieldElement) sm2P256FieldElement {	
-	var carry, nextCarry uint32	
+		i++
+		if i == 9 {
+			break
+		}
+		nextCarry = in[i] >> 26
+		in[i] <<= 2
+		in[i] &= bottom28Bits
+		in[i] += carry
+		carry = nextCarry + (in[i] >> 28)
+		in[i] &= bottom28Bits
+	}
 
-	for i := 0; ; i++ {	
-		nextCarry = in[i] >> 27	
-		in[i] <<= 2	
-		in[i] &= bottom29Bits	
-		in[i] += carry	
-		carry = nextCarry + (in[i] >> 29)	
-		in[i] &= bottom29Bits	
+	return sm2P256ReduceCarry(in, carry)
+}
 
-		i++	
-		if i == 9 {	
-			break	
-		}	
-		nextCarry = in[i] >> 26	
-		in[i] <<= 2	
-		in[i] &= bottom28Bits	
-		in[i] += carry	
-		carry = nextCarry + (in[i] >> 28)	
-		in[i] &= bottom28Bits	
-	}	
+func sm2P256Scalar8(in sm2P256FieldElement) sm2P256FieldElement {
+	var carry, nextCarry uint32
 
-	return sm2P256ReduceCarry(in, carry)	
-}	
+	for i := 0; ; i++ {
+		nextCarry = in[i] >> 26
+		in[i] <<= 3
+		in[i] &= bottom29Bits
+		in[i] += carry
+		carry = nextCarry + (in[i] >> 29)
+		in[i] &= bottom29Bits
 
-func sm2P256Scalar8(in sm2P256FieldElement) sm2P256FieldElement {	
-	var carry, nextCarry uint32	
+		i++
+		if i == 9 {
+			break
+		}
+		nextCarry = in[i] >> 25
+		in[i] <<= 3
+		in[i] &= bottom28Bits
+		in[i] += carry
+		carry = nextCarry + (in[i] >> 28)
+		in[i] &= bottom28Bits
+	}
 
-	for i := 0; ; i++ {	
-		nextCarry = in[i] >> 26	
-		in[i] <<= 3	
-		in[i] &= bottom29Bits	
-		in[i] += carry	
-		carry = nextCarry + (in[i] >> 29)	
-		in[i] &= bottom29Bits	
-
-		i++	
-		if i == 9 {	
-			break	
-		}	
-		nextCarry = in[i] >> 25	
-		in[i] <<= 3	
-		in[i] &= bottom28Bits	
-		in[i] += carry	
-		carry = nextCarry + (in[i] >> 28)	
-		in[i] &= bottom28Bits	
-	}	
-
-	return sm2P256ReduceCarry(in, carry)	
+	return sm2P256ReduceCarry(in, carry)
 }
