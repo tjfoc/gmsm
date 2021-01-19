@@ -72,8 +72,9 @@ func Rightshift(V []byte){
 
 func findYi( Y []byte,index int) int{
 	var temp byte
-	temp=Y[index/8]
-	temp=temp>>(7-index%8)
+	i := uint(index)
+	temp=Y[i/8]
+	temp=temp>>(7-i%8)
 	if temp & 0x01 == 1{
 		return 1
 	}else{
