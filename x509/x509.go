@@ -33,13 +33,14 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 	"hash"
 	"io"
 	"math/big"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/Hyperledger-TWGC/tjfoc-gm/sm2"
 
 	"github.com/Hyperledger-TWGC/tjfoc-gm/sm3"
 	"golang.org/x/crypto/ripemd160"
@@ -1033,7 +1034,7 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 				X:     pub.X,
 				Y:     pub.Y,
 			}
-			if !sm2.Sm2Verify(sm2pub, signed, nil, ecdsaSig.R, ecdsaSig.S) {
+			if !sm2pub.Sm2Verify(signed, nil, ecdsaSig.R, ecdsaSig.S) {
 				return errors.New("x509: SM2 verification failure")
 			}
 		default:

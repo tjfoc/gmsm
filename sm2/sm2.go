@@ -65,7 +65,13 @@ var two = new(big.Int).SetInt64(2)
 
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(random io.Reader, msg []byte, signer crypto.SignerOpts) ([]byte, error) {
-	r, s, err := Sm2Sign(priv, msg, nil, random)
+	s := &big.Int{}
+	digest, err := priv.PublicKey.Sm3Digest(msg, nil)
+	if err != nil {
+		return nil, err
+	}
+	e := new(big.Int).SetBytes(digest)
+	r, err := priv.Sm2Sign(msg, nil, random, e, s)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +84,7 @@ func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 	if err != nil {
 		return false
 	}
-	return Sm2Verify(pub, msg, default_uid, sm2Sign.R, sm2Sign.S)
+	return pub.Sm2Verify(msg, default_uid, sm2Sign.R, sm2Sign.S)
 }
 
 func (pub *PublicKey) Sm3Digest(msg, uid []byte) ([]byte, error) {
@@ -92,11 +98,11 @@ func (pub *PublicKey) Sm3Digest(msg, uid []byte) ([]byte, error) {
 	}
 
 	e, err := msgHash(za, msg)
+
 	if err != nil {
 		return nil, err
 	}
-
-	return e.Bytes(), nil
+	return e, nil
 }
 
 //****************************Encryption algorithm****************************//
@@ -121,51 +127,49 @@ func KeyExchangeA(klen int, ida, idb []byte, priA *PrivateKey, pubB *PublicKey, 
 
 //****************************************************************************//
 
-func Sm2Sign(priv *PrivateKey, msg, uid []byte, random io.Reader) (r, s *big.Int, err error) {
-	digest, err := priv.PublicKey.Sm3Digest(msg, uid)
-	if err != nil {
-		return nil, nil, err
-	}
-	e := new(big.Int).SetBytes(digest)
+func (priv *PrivateKey) Sm2Sign(msg, uid []byte, random io.Reader, e *big.Int, s *big.Int) (r *big.Int, err error) {
 	c := priv.PublicKey.Curve
 	N := c.Params().N
 	if N.Sign() == 0 {
-		return nil, nil, errZeroParam
+		return nil, errZeroParam
 	}
-	var k *big.Int
+	k := new(big.Int)
+	rD := new(big.Int)
+	d1 := new(big.Int)
+	d1Inv := new(big.Int)
+	t := new(big.Int)
 	for { // 调整算法细节以实现SM2
 		for {
-			k, err = randFieldElement(c, random)
+			err = randFieldElement(c, random, k)
 			if err != nil {
-				r = nil
-				return
+				return nil, err
 			}
 			r, _ = priv.Curve.ScalarBaseMult(k.Bytes())
 			r.Add(r, e)
 			r.Mod(r, N)
 			if r.Sign() != 0 {
-				if t := new(big.Int).Add(r, k); t.Cmp(N) != 0 {
+				if t.Add(r, k); t.Cmp(N) != 0 {
 					break
 				}
 			}
 
 		}
-		rD := new(big.Int).Mul(priv.D, r)
-		s = new(big.Int).Sub(k, rD)
-		d1 := new(big.Int).Add(priv.D, one)
-		d1Inv := new(big.Int).ModInverse(d1, N)
+		rD.Mul(priv.D, r)
+		s.Sub(k, rD)
+		d1.Add(priv.D, one)
+		d1Inv.ModInverse(d1, N)
 		s.Mul(s, d1Inv)
 		s.Mod(s, N)
 		if s.Sign() != 0 {
 			break
 		}
 	}
-	return
+	return r, nil
 }
-func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
+func (pub *PublicKey) Sm2Verify(msg, uid []byte, r, s *big.Int) bool {
 	c := pub.Curve
 	N := c.Params().N
-	one := new(big.Int).SetInt64(1)
+	//one := new(big.Int).SetInt64(1)
 	if r.Cmp(one) < 0 || s.Cmp(one) < 0 {
 		return false
 	}
@@ -183,29 +187,23 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 	if err != nil {
 		return false
 	}
-	t := new(big.Int).Add(r, s)
+	t := &big.Int{}
+	t.Add(r, s) //new(big.Int).Add(r, s)
 	t.Mod(t, N)
 	if t.Sign() == 0 {
 		return false
 	}
-	var x *big.Int
+	//var x *big.Int
+	x := &big.Int{}
+	x.SetBytes(e)
 	x1, y1 := c.ScalarBaseMult(s.Bytes())
 	x2, y2 := c.ScalarMult(pub.X, pub.Y, t.Bytes())
-	x, _ = c.Add(x1, y1, x2, y2)
-
-	x.Add(x, e)
+	tmp, _ := c.Add(x1, y1, x2, y2)
+	x.Add(x, tmp)
 	x.Mod(x, N)
 	return x.Cmp(r) == 0
 }
 
-/*
-    za, err := ZA(pub, uid)
-	if err != nil {
-		return
-	}
-	e, err := msgHash(za, msg)
-	hash=e.getBytes()
-*/
 func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	c := pub.Curve
 	N := c.Params().N
@@ -247,7 +245,8 @@ func Encrypt(pub *PublicKey, data []byte, random io.Reader) ([]byte, error) {
 	for {
 		c := []byte{}
 		curve := pub.Curve
-		k, err := randFieldElement(curve, random)
+		k := &big.Int{}
+		err := randFieldElement(curve, random, k)
 		if err != nil {
 			return nil, err
 		}
@@ -258,16 +257,16 @@ func Encrypt(pub *PublicKey, data []byte, random io.Reader) ([]byte, error) {
 		x2Buf := x2.Bytes()
 		y2Buf := y2.Bytes()
 		if n := len(x1Buf); n < 32 {
-			x1Buf = append(zeroByteSlice()[:32-n], x1Buf...)
+			x1Buf = append(zeroByteSlice[:32-n], x1Buf...)
 		}
 		if n := len(y1Buf); n < 32 {
-			y1Buf = append(zeroByteSlice()[:32-n], y1Buf...)
+			y1Buf = append(zeroByteSlice[:32-n], y1Buf...)
 		}
 		if n := len(x2Buf); n < 32 {
-			x2Buf = append(zeroByteSlice()[:32-n], x2Buf...)
+			x2Buf = append(zeroByteSlice[:32-n], x2Buf...)
 		}
 		if n := len(y2Buf); n < 32 {
-			y2Buf = append(zeroByteSlice()[:32-n], y2Buf...)
+			y2Buf = append(zeroByteSlice[:32-n], y2Buf...)
 		}
 		c = append(c, x1Buf...) // x分量
 		c = append(c, y1Buf...) // y分量
@@ -293,16 +292,18 @@ func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 	data = data[1:]
 	length := len(data) - 96
 	curve := priv.Curve
-	x := new(big.Int).SetBytes(data[:32])
-	y := new(big.Int).SetBytes(data[32:64])
+	x := &big.Int{}
+	x.SetBytes(data[:32])
+	y := &big.Int{}
+	y.SetBytes(data[32:64])
 	x2, y2 := curve.ScalarMult(x, y, priv.D.Bytes())
 	x2Buf := x2.Bytes()
 	y2Buf := y2.Bytes()
 	if n := len(x2Buf); n < 32 {
-		x2Buf = append(zeroByteSlice()[:32-n], x2Buf...)
+		x2Buf = append(zeroByteSlice[:32-n], x2Buf...)
 	}
 	if n := len(y2Buf); n < 32 {
-		y2Buf = append(zeroByteSlice()[:32-n], y2Buf...)
+		y2Buf = append(zeroByteSlice[:32-n], y2Buf...)
 	}
 	c, ok := kdf(length, x2Buf, y2Buf)
 	if !ok {
@@ -381,11 +382,11 @@ func keyExchange(klen int, ida, idb []byte, pri *PrivateKey, pub *PublicKey, rpr
 	return k, S1, S2, nil
 }
 
-func msgHash(za, msg []byte) (*big.Int, error) {
+func msgHash(za, msg []byte) ([]byte, error) {
 	e := sm3.New()
 	e.Write(za)
 	e.Write(msg)
-	return new(big.Int).SetBytes(e.Sum(nil)[:32]), nil
+	return e.Sum(nil)[:32], nil
 }
 
 // ZA = H256(ENTLA || IDA || a || b || xG || yG || xA || yA)
@@ -401,36 +402,33 @@ func ZA(pub *PublicKey, uid []byte) ([]byte, error) {
 	if uidLen > 0 {
 		za.Write(uid)
 	}
-	za.Write(sm2P256.A.Bytes())
-	za.Write(sm2P256.B.Bytes())
-	za.Write(sm2P256.Gx.Bytes())
-	za.Write(sm2P256.Gy.Bytes())
+	za.Write(AByte)
+	za.Write(BByte)
+	za.Write(GxByte)
+	za.Write(GyByte)
 
 	xBuf := pub.X.Bytes()
 	yBuf := pub.Y.Bytes()
 	if n := len(xBuf); n < 32 {
-		xBuf = append(zeroByteSlice()[:32-n], xBuf...)
+		xBuf = append(zeroByteSlice[:32-n], xBuf...)
 	}
 	if n := len(yBuf); n < 32 {
-		yBuf = append(zeroByteSlice()[:32-n], yBuf...)
+		yBuf = append(zeroByteSlice[:32-n], yBuf...)
 	}
 	za.Write(xBuf)
 	za.Write(yBuf)
 	return za.Sum(nil)[:32], nil
 }
 
-// 32byte
-func zeroByteSlice() []byte {
-	return []byte{
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-	}
+var zeroByteSlice = []byte{
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
 }
 
 /*
@@ -465,8 +463,10 @@ func DecryptAsn1(pub *PrivateKey, data []byte) ([]byte, error) {
  */
 func CipherMarshal(data []byte) ([]byte, error) {
 	data = data[1:]
-	x := new(big.Int).SetBytes(data[:32])
-	y := new(big.Int).SetBytes(data[32:64])
+	x := &big.Int{}
+	x.SetBytes(data[:32])
+	y := &big.Int{}
+	y.SetBytes(data[32:64])
 	hash := data[64:96]
 	cipherText := data[96:]
 	return asn1.Marshal(sm2Cipher{x, y, hash, cipherText})
@@ -493,10 +493,10 @@ func CipherUnmarshal(data []byte) ([]byte, error) {
 	}
 	c := []byte{}
 	if n := len(x); n < 32 {
-		x = append(zeroByteSlice()[:32-n], x...)
+		x = append(zeroByteSlice[:32-n], x...)
 	}
 	if n := len(y); n < 32 {
-		y = append(zeroByteSlice()[:32-n], y...)
+		y = append(zeroByteSlice[:32-n], y...)
 	}
 	c = append(c, x...)          // x分量
 	c = append(c, y...)          // y分
@@ -517,11 +517,13 @@ func keXHat(x *big.Int) (xul *big.Int) {
 		buf[len(buf)-16] = c & 0x7f
 	}
 
-	r := new(big.Int).SetBytes(buf)
+	r := &big.Int{}
+	r.SetBytes(buf)
 	_2w := new(big.Int).SetBytes([]byte{
 		0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-	return r.Add(r, _2w)
+	xul = r.Add(r, _2w)
+	return
 }
 
 func BytesCombine(pBytes ...[]byte) []byte {
@@ -534,16 +536,9 @@ func BytesCombine(pBytes ...[]byte) []byte {
 	return bytes.Join(s, sep)
 }
 
-func intToBytes(x int) []byte {
-	var buf = make([]byte, 4)
-
-	binary.BigEndian.PutUint32(buf, uint32(x))
-	return buf
-}
-
 func kdf(length int, x ...[]byte) ([]byte, bool) {
 	var c []byte
-
+	var buf []byte
 	ct := 1
 	h := sm3.New()
 	for i, j := 0, (length+31)/32; i < j; i++ {
@@ -551,7 +546,9 @@ func kdf(length int, x ...[]byte) ([]byte, bool) {
 		for _, xx := range x {
 			h.Write(xx)
 		}
-		h.Write(intToBytes(ct))
+		buf = make([]byte, 4)
+		binary.BigEndian.PutUint32(buf, uint32(ct))
+		h.Write(buf)
 		hash := h.Sum(nil)
 		if i+1 == j && length%32 != 0 {
 			c = append(c, hash[:length%32]...)
@@ -568,17 +565,17 @@ func kdf(length int, x ...[]byte) ([]byte, bool) {
 	return c, false
 }
 
-func randFieldElement(c elliptic.Curve, random io.Reader) (k *big.Int, err error) {
+func randFieldElement(c elliptic.Curve, random io.Reader, k *big.Int) (err error) {
 	if random == nil {
 		random = rand.Reader //If there is no external trusted random source,please use rand.Reader to instead of it.
 	}
 	params := c.Params()
-	b := make([]byte, params.BitSize/8+8)
+	b := make([]byte, 40)
 	_, err = io.ReadFull(random, b)
 	if err != nil {
 		return
 	}
-	k = new(big.Int).SetBytes(b)
+	k.SetBytes(b)
 	n := new(big.Int).Sub(params.N, one)
 	k.Mod(k, n)
 	k.Add(k, one)
@@ -591,14 +588,16 @@ func GenerateKey(random io.Reader) (*PrivateKey, error) {
 		random = rand.Reader //If there is no external trusted random source,please use rand.Reader to instead of it.
 	}
 	params := c.Params()
-	b := make([]byte, params.BitSize/8+8)
+	b := make([]byte, 40)
 	_, err := io.ReadFull(random, b)
 	if err != nil {
 		return nil, err
 	}
 
-	k := new(big.Int).SetBytes(b)
-	n := new(big.Int).Sub(params.N, two)
+	k := &big.Int{}
+	k.SetBytes(b)
+	n := &big.Int{}
+	n.Sub(params.N, two)
 	k.Mod(k, n)
 	k.Add(k, one)
 	priv := new(PrivateKey)

@@ -18,7 +18,6 @@ package sm2
 import (
 	"crypto/elliptic"
 	"math/big"
-	"sync"
 )
 
 /** 学习标准库p256的优化方法实现sm2的快速版本
@@ -47,13 +46,27 @@ import (
  */
 
 type sm2P256Curve struct {
-	*elliptic.CurveParams
+	//CurveParams  *elliptic.CurveParams
 	RInverse, A  *big.Int
 	a, b, gx, gy sm2P256FieldElement
 }
 
-var initonce sync.Once
-var sm2P256 sm2P256Curve
+//var initonce sync.Once
+//var sm2P256 sm2P256Curve
+var instance *sm2P256Curve
+var params *elliptic.CurveParams
+var A = &big.Int{}
+var P = &big.Int{}
+var RInverse = &big.Int{}
+var N = &big.Int{}
+var B = &big.Int{}
+var Gx = &big.Int{}
+var Gy = &big.Int{}
+var a, b, gx, gy sm2P256FieldElement
+var AByte []byte
+var BByte []byte
+var GxByte []byte
+var GyByte []byte
 
 type sm2P256FieldElement [9]uint32
 type sm2P256LargeFieldElement [17]uint64
@@ -64,29 +77,62 @@ const (
 )
 
 func initP256Sm2() {
-	sm2P256.CurveParams = &elliptic.CurveParams{Name: "SM2-P-256"} // sm2
-	sm2P256.A, _ = new(big.Int).SetString("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC", 16)
+	//A = &big.Int{}
+	A.SetString("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC", 16)
 	//SM2椭	椭 圆 曲 线 公 钥 密 码 算 法 推 荐 曲 线 参 数
-	sm2P256.P, _ = new(big.Int).SetString("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF", 16)
-	sm2P256.N, _ = new(big.Int).SetString("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123", 16)
-	sm2P256.B, _ = new(big.Int).SetString("28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93", 16)
-	sm2P256.Gx, _ = new(big.Int).SetString("32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7", 16)
-	sm2P256.Gy, _ = new(big.Int).SetString("BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", 16)
-	sm2P256.RInverse, _ = new(big.Int).SetString("7ffffffd80000002fffffffe000000017ffffffe800000037ffffffc80000002", 16)
-	sm2P256.BitSize = 256
-	sm2P256.a = sm2P256FromBig(sm2P256.A)
-	sm2P256.gx = sm2P256FromBig(sm2P256.Gx)
-	sm2P256.gy = sm2P256FromBig(sm2P256.Gy)
-	sm2P256.b = sm2P256FromBig(sm2P256.B)
+	P.SetString("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF", 16)
+	N.SetString("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123", 16)
+	B.SetString("28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93", 16)
+	Gx.SetString("32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7", 16)
+	Gy.SetString("BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", 16)
+	RInverse.SetString("7ffffffd80000002fffffffe000000017ffffffe800000037ffffffc80000002", 16)
+	AByte = A.Bytes()
+	BByte = B.Bytes()
+	GxByte = Gx.Bytes()
+	GyByte = Gy.Bytes()
+	a = sm2P256FromBig(A)
+	gx = sm2P256FromBig(Gx)
+	gy = sm2P256FromBig(Gy)
+	b = sm2P256FromBig(B)
+	params = &elliptic.CurveParams{
+		Name:    "SM2-P-256",
+		P:       P,
+		N:       N,
+		B:       B,
+		Gx:      Gx,
+		Gy:      Gy,
+		BitSize: 256,
+	}
+	instance = &sm2P256Curve{
+		RInverse: RInverse,
+		A:        A,
+		a:        a,
+		b:        b,
+		gx:       gx,
+		gy:       gy,
+	}
 }
 
 func P256Sm2() elliptic.Curve {
-	initonce.Do(initP256Sm2)
-	return sm2P256
+	//initonce.Do(initP256Sm2)
+	if params == nil {
+		initP256Sm2()
+	}
+	return sm2P256Curve{
+		RInverse: RInverse,
+		A:        A,
+		a:        a,
+		b:        b,
+		gx:       gx,
+		gy:       gy,
+	}
 }
 
 func (curve sm2P256Curve) Params() *elliptic.CurveParams {
-	return sm2P256.CurveParams
+	if params == nil {
+		initP256Sm2()
+	}
+	return params
 }
 
 // y^2 = x^3 + ax + b
@@ -107,18 +153,24 @@ func (curve sm2P256Curve) IsOnCurve(X, Y *big.Int) bool {
 	return !sm2P256ZeroFieldElement(sm2P256Sub(x3, y2))
 }
 
-func zForAffine(x, y *big.Int) *big.Int {
+func zForAffine(x, y *big.Int) bool {
 	if x.Sign() != 0 || y.Sign() != 0 {
-		return big.NewInt(1)
+		return true //big.NewInt(1)
 	}
-	return new(big.Int)
+	return false //new(big.Int)
 }
 
 func (curve sm2P256Curve) Add(x1, y1, x2, y2 *big.Int) (*big.Int, *big.Int) {
 	var X1, Y1, Z1, X2, Y2, Z2, X3, Y3, Z3 sm2P256FieldElement
 
-	z1 := zForAffine(x1, y1)
-	z2 := zForAffine(x2, y2)
+	z1 := new(big.Int)
+	if zForAffine(x1, y1) {
+		z1 = z1.SetInt64(1)
+	}
+	z2 := new(big.Int)
+	if zForAffine(x2, y2) {
+		z2 = z2.SetInt64(1)
+	}
 	X1 = sm2P256FromBig(x1)
 	Y1 = sm2P256FromBig(y1)
 	Z1 = sm2P256FromBig(z1)
@@ -126,18 +178,26 @@ func (curve sm2P256Curve) Add(x1, y1, x2, y2 *big.Int) (*big.Int, *big.Int) {
 	Y2 = sm2P256FromBig(y2)
 	Z2 = sm2P256FromBig(z2)
 	X3, Y3, Z3 = sm2P256PointAdd(X1, Y1, Z1, X2, Y2, Z2)
-	return sm2P256ToAffine(X3, Y3, Z3)
+	ox, oy := new(big.Int), new(big.Int)
+	sm2P256ToAffine(X3, Y3, Z3, ox, oy)
+	return ox, oy
 }
 
 func (curve sm2P256Curve) Double(x1, y1 *big.Int) (*big.Int, *big.Int) {
 	var X1, Y1, Z1 sm2P256FieldElement
 
-	z1 := zForAffine(x1, y1)
+	//z1 := zForAffine(x1, y1)
+	z1 := new(big.Int)
+	if zForAffine(x1, y1) {
+		z1 = z1.SetInt64(1)
+	}
 	X1 = sm2P256FromBig(x1)
 	Y1 = sm2P256FromBig(y1)
 	Z1 = sm2P256FromBig(z1)
 	X1, Y1, Z1 = sm2P256PointDouble(X1, Y1, Z1)
-	return sm2P256ToAffine(X1, Y1, Z1)
+	ox, oy := new(big.Int), new(big.Int)
+	sm2P256ToAffine(X1, Y1, Z1, ox, oy)
+	return ox, oy
 }
 
 func (curve sm2P256Curve) ScalarMult(x1, y1 *big.Int, k []byte) (*big.Int, *big.Int) {
@@ -147,7 +207,9 @@ func (curve sm2P256Curve) ScalarMult(x1, y1 *big.Int, k []byte) (*big.Int, *big.
 	scalar := sm2GenrateWNaf(k)
 	scalarReversed := WNafReversed(scalar)
 	X, Y, Z = sm2P256ScalarMult(X1, Y1, scalarReversed)
-	return sm2P256ToAffine(X, Y, Z)
+	ox, oy := new(big.Int), new(big.Int)
+	sm2P256ToAffine(X, Y, Z, ox, oy)
+	return ox, oy
 }
 
 func (curve sm2P256Curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
@@ -156,7 +218,9 @@ func (curve sm2P256Curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
 
 	sm2P256GetScalar(&scalarReversed, k)
 	X, Y, Z = sm2P256ScalarBaseMult(scalarReversed)
-	return sm2P256ToAffine(X, Y, Z)
+	ox, oy := new(big.Int), new(big.Int)
+	sm2P256ToAffine(X, Y, Z, ox, oy)
+	return ox, oy
 }
 
 var sm2P256Precomputed = [9 * 2 * 15 * 2]uint32{
@@ -226,8 +290,8 @@ func sm2P256GetScalar(b *[32]byte, a []byte) {
 	var scalarBytes []byte
 
 	n := new(big.Int).SetBytes(a)
-	if n.Cmp(sm2P256.N) >= 0 {
-		n.Mod(n, sm2P256.N)
+	if n.Cmp(N) >= 0 {
+		n.Mod(n, N)
 		scalarBytes = n.Bytes()
 	} else {
 		scalarBytes = a
@@ -384,9 +448,9 @@ func sm2P256ScalarBaseMult(scalar [32]uint8) (x, y, z sm2P256FieldElement) {
 
 func sm2P256PointToAffine(x, y, z sm2P256FieldElement) (rsx, rsy sm2P256FieldElement) {
 	var xOut, yOut, zInv, zInvSq sm2P256FieldElement
-
-	zz := sm2P256ToBig(z)
-	zz.ModInverse(zz, sm2P256.P)
+	zz := &big.Int{}
+	sm2P256ToBig(z, zz)
+	zz.ModInverse(zz, P)
 	zInv = sm2P256FromBig(zz)
 	//zInv = sm2p256Invert(z)
 	zInvSq = sm2P256Square(zInv)
@@ -396,9 +460,11 @@ func sm2P256PointToAffine(x, y, z sm2P256FieldElement) (rsx, rsy sm2P256FieldEle
 	return xOut, yOut
 }
 
-func sm2P256ToAffine(x, y, z sm2P256FieldElement) (xOut, yOut *big.Int) {
+func sm2P256ToAffine(x, y, z sm2P256FieldElement, xOut, yOut *big.Int) {
 	xx, yy := sm2P256PointToAffine(x, y, z)
-	return sm2P256ToBig(xx), sm2P256ToBig(yy)
+	sm2P256ToBig(xx, xOut)
+	sm2P256ToBig(yy, yOut)
+	return
 }
 
 var sm2P256Factor = []sm2P256FieldElement{
@@ -520,8 +586,8 @@ func sm2P256Cal(x1, y1, z1, x2, y2, z2 sm2P256FieldElement) (a, b, c sm2P256Fiel
 	return x3, y3, z3
 }
 
-func sm2P256PointDouble(x, y, z sm2P256FieldElement) (a, b, c sm2P256FieldElement) {
-	var s, m, m2, x2, y2, z2, z4, y4, az4, z3, x3, y3 sm2P256FieldElement
+func sm2P256PointDouble(x, y, z sm2P256FieldElement) (x3, y3, z3 sm2P256FieldElement) {
+	var s, m, m2, x2, y2, z2, z4, y4, az4 sm2P256FieldElement
 
 	x2 = sm2P256Square(x) // x2 = x ^ 2
 	y2 = sm2P256Square(y) // y2 = y ^ 2
@@ -543,7 +609,7 @@ func sm2P256PointDouble(x, y, z sm2P256FieldElement) (a, b, c sm2P256FieldElemen
 	m = x2
 	//m = sm2P256Scalar(m, 3)
 	m = sm2P256Scalar3(m)
-	az4 = sm2P256Mul(sm2P256.a, z4)
+	az4 = sm2P256Mul(a, z4)
 	m = sm2P256Add(m, az4) // m = 3 * x ^ 2 + a * z ^ 4
 
 	m2 = sm2P256Square(m) // m2 = m ^ 2
@@ -945,7 +1011,7 @@ func sm2P256Dup(b, a *sm2P256FieldElement) {
 func sm2P256FromBig(a *big.Int) (rs sm2P256FieldElement) {
 	var X sm2P256FieldElement
 	x := new(big.Int).Lsh(a, 257)
-	x.Mod(x, sm2P256.P)
+	x.Mod(x, P)
 	for i := 0; i < 9; i += 2 {
 		if bits := x.Bits(); len(bits) > 0 {
 			X[i] = uint32(bits[0]) & bottom29Bits
@@ -969,8 +1035,8 @@ func sm2P256FromBig(a *big.Int) (rs sm2P256FieldElement) {
 
 // X = r * R mod P
 // r = X * R' mod P
-func sm2P256ToBig(X sm2P256FieldElement) *big.Int {
-	r, tm := new(big.Int), new(big.Int)
+func sm2P256ToBig(X sm2P256FieldElement, r *big.Int) {
+	tm := new(big.Int)
 	r.SetInt64(int64(X[8]))
 	for i := 7; i >= 0; i-- {
 		if (i & 1) == 0 {
@@ -981,9 +1047,9 @@ func sm2P256ToBig(X sm2P256FieldElement) *big.Int {
 		tm.SetInt64(int64(X[i]))
 		r.Add(r, tm)
 	}
-	r.Mul(r, sm2P256.RInverse)
-	r.Mod(r, sm2P256.P)
-	return r
+	r.Mul(r, RInverse)
+	r.Mod(r, P)
+	return
 }
 func WNafReversed(wnaf []int8) []int8 {
 	wnafRev := make([]int8, len(wnaf), len(wnaf))
@@ -996,8 +1062,8 @@ func sm2GenrateWNaf(b []byte) []int8 {
 	n := new(big.Int).SetBytes(b)
 	//var k *big.Int
 	k := n
-	if n.Cmp(sm2P256.N) >= 0 {
-		k.Mod(n, sm2P256.N)
+	if n.Cmp(N) >= 0 {
+		k.Mod(n, N)
 	}
 	wnaf := make([]int8, k.BitLen()+1, k.BitLen()+1)
 	if k.Sign() == 0 {
