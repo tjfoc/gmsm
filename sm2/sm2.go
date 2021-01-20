@@ -198,10 +198,10 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 	return x.Cmp(r) == 0
 }
 
-/* 
+/*
     za, err := ZA(pub, uid)
 	if err != nil {
-		return 
+		return
 	}
 	e, err := msgHash(za, msg)
 	hash=e.getBytes()
@@ -491,6 +491,12 @@ func CipherUnmarshal(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if n := len(x); n < 32 {
+		x = append(zeroByteSlice()[:32-n], x...)
+	}
+	if n := len(y); n < 32 {
+		y = append(zeroByteSlice()[:32-n], y...)
+	}
 	c := []byte{}
 	c = append(c, x...)          // x分量
 	c = append(c, y...)          // y分
@@ -621,7 +627,6 @@ func getLastBit(a *big.Int) uint {
 }
 
 // crypto.Decrypter
-func (priv *PrivateKey) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintext []byte, err error){
+func (priv *PrivateKey) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintext []byte, err error) {
 	return Decrypt(priv, msg)
 }
-
