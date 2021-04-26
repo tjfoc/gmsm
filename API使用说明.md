@@ -36,7 +36,7 @@ go get -u github.com/tjfoc/gmsm
     if err != nil {
     	log.Fatal(err)
     }
-    isok := pubKey.Verify(msg, sign)    //sm2验签
+    isok := pub.Verify(msg, sign)    //sm2验签
     fmt.Printf("Verified: %v\n", isok)
 ```
 ## SM3密码杂凑算法 - SM3 cryptographic hash algorithm
