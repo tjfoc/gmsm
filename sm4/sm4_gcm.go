@@ -319,7 +319,7 @@ func GCMDecrypt(K,IV,C,A []byte)(P,_T []byte){
 	Y:=make([]byte,BlockSize*(n+1))
 	Y=incr(n+1,Y0)
 
-	P =make([]byte,len(C))
+	P = make([]byte, BlockSize*n)
 	for i:=1;i<=n;i++{
 		c.Encrypt(Enc,Y[i*BlockSize:i*BlockSize+BlockSize])
 		copy(P[(i-1)*BlockSize:(i-1)*BlockSize+BlockSize],addition(C[(i-1)*BlockSize:(i-1)*BlockSize+BlockSize],Enc))
