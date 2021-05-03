@@ -3,12 +3,14 @@ package x509
 import (
 	"bytes"
 	"crypto"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
+	"math/big"
 
 	"github.com/tjfoc/gmsm/sm2"
 )
@@ -64,6 +66,83 @@ func WritePublicKeyToPem(key *sm2.PublicKey) ([]byte, error) {
 	certPem := pem.EncodeToMemory(block)
 	return certPem, nil
 }
+
+//DHex是sm2私钥的真正关键数值
+func ReadPrivateKeyFromDhex(privateKeyFromDhex string) (*sm2.PrivateKey) {
+	c := sm2.P256Sm2()
+	k, _ := new(big.Int).SetString(privateKeyFromDhex, 16)
+	priv := new(sm2.PrivateKey)
+	priv.PublicKey.Curve = c
+	priv.D = k
+	priv.PublicKey.X, priv.PublicKey.Y = c.ScalarBaseMult(k.Bytes())
+	return priv
+}
+
+
+//DHex是sm2私钥的关键数值
+func WritePrivateKeyToDhex(key *sm2.PrivateKey) string {
+	return key.D.Text(16)
+}
+
+//QHex是sm2公钥的关键数值，由04+pub.X+pub.Y组成
+func ReadPublicKeyFromQhex(publicKeyFromQhex string) (*sm2.PublicKey, error) {
+	if len(publicKeyFromQhex) == 130{
+		publicKeyFromQhex = publicKeyFromQhex[2:]
+	} else {
+		return nil, errors.New("Decrypt: failed to decrypt")
+	}
+	pub := new(sm2.PublicKey)
+	pub.Curve = sm2.P256Sm2()
+	pub.X, _ = new(big.Int).SetString(publicKeyFromQhex[:64], 16)
+	pub.Y, _ = new(big.Int).SetString(publicKeyFromQhex[64:], 16)
+	return pub, nil
+}
+
+//QHex是sm2公钥的关键数值，由04+pub.X+pub.Y组成
+func WritePublicKeyToQhex(key *sm2.PublicKey) string {
+	x := key.X.Text(16)
+	y := key.Y.Text(16)
+	for len(x) < 64 {
+		x = "0" + x;
+	}
+	for len(y) < 64 {
+		y = "0" + y;
+	}
+	return "04" + x + y
+}
+
+//kxz:为了和openssl互通而设立的，该pem是p8格式的一部分，openssl命令行参考：openssl ecparam -genkey -name SM2 -out priv.key
+func ReadPrivateKeyFromOpenSSLPem(privateKeyPem []byte) (*sm2.PrivateKey, error) {
+	var block *pem.Block
+	block, _ = pem.Decode(privateKeyPem)
+	if block == nil {
+		return nil, errors.New("failed to decode private key")
+	}
+	priv, err := ParseSm2PrivateKey(block.Bytes)
+	return priv, err
+}
+
+//kxz:为了和openssl互通而设立的，该pem是p8格式的一部分，openssl命令行参考：openssl ecparam -genkey -name SM2 -out priv.key
+func WritePrivateKeyToOpenSSLPem(key *sm2.PrivateKey) ([]byte, error) {
+	//x509\pkcs8.go中没有相关代码，这里直接进行实现
+	var priv sm2PrivateKey
+	priv.Version = 1
+	priv.NamedCurveOID = oidNamedCurveP256SM2
+	priv.PublicKey = asn1.BitString{Bytes: elliptic.Marshal(key.Curve, key.X, key.Y)}
+	priv.PrivateKey = key.D.Bytes()
+	der, err := asn1.Marshal(priv)
+	if err != nil {
+		return nil, err
+	}
+	block := &pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: der,
+	}
+	certPem := pem.EncodeToMemory(block)
+	return certPem, nil
+}
+
+
 
 func ReadCertificateRequestFromPem(certPem []byte) (*CertificateRequest, error) {
 	block, _ := pem.Decode(certPem)

@@ -289,6 +289,33 @@ func Encrypt(pub *PublicKey, data []byte, random io.Reader) ([]byte, error) {
 	}
 }
 
+/*
+ * sm2密文结构如下:
+ *  x
+ *  y
+ *  CipherText
+ *  hash
+ */
+func EncryptWithOldModel(pub *PublicKey, data []byte, random io.Reader) ([]byte, error) {
+	ciphertext, err := Encrypt(pub, data, random);
+	if err != nil {
+		return ciphertext, err
+	}
+	ciphertext = ciphertext[1:]
+	c1 := make([]byte, 64)
+	c2 := make([]byte, len(ciphertext) - 96)
+	c3 := make([]byte, 32)
+	copy(c1, ciphertext[:64])//x1,y1
+	copy(c3, ciphertext[64:96])//hash
+	copy(c2, ciphertext[96:])//密文
+	c := []byte{}
+	c = append(c, c1...)
+	c = append(c, c2...)
+	c = append(c, c3...)
+
+	return append([]byte{0x04}, c...), nil
+}
+
 func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 	data = data[1:]
 	length := len(data) - 96
@@ -321,6 +348,24 @@ func Decrypt(priv *PrivateKey, data []byte) ([]byte, error) {
 	}
 	return c, nil
 }
+
+func DecryptWithOldModel(priv *PrivateKey, data []byte) ([]byte, error) {
+	data = data[1:]
+	c1 := make([]byte, 64)
+	c2 := make([]byte, len(data) - 96)
+	c3 := make([]byte, 32)
+
+	copy(c1, data[:64])//x1,y1
+	copy(c2, data[64:len(data) - 32])//密文
+	copy(c3, data[len(data) - 32:])//hash
+	c := []byte{}
+	c = append(c, c1...)
+	c = append(c, c3...)
+	c = append(c, c2...)
+	data = append([]byte{0x04}, c...)
+	return Decrypt(priv, data)
+}
+
 
 // keyExchange 为SM2密钥交换算法的第二部和第三步复用部分，协商的双方均调用此函数计算共同的字节串
 // klen: 密钥长度
