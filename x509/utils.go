@@ -3,7 +3,6 @@ package x509
 import (
 	"bytes"
 	"crypto"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
