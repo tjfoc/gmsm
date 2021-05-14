@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"math/big"
@@ -68,80 +69,66 @@ func WritePublicKeyToPem(key *sm2.PublicKey) ([]byte, error) {
 }
 
 //DHex是sm2私钥的真正关键数值
-func ReadPrivateKeyFromDhex(privateKeyFromDhex string) (*sm2.PrivateKey) {
+func ReadPrivateKeyFromHex(Dhex string) (*sm2.PrivateKey,error) {
 	c := sm2.P256Sm2()
-	k, _ := new(big.Int).SetString(privateKeyFromDhex, 16)
+	d,err:=hex.DecodeString(Dhex)
+	if err!=nil{
+		return nil,err
+	}
+	k:= new(big.Int).SetBytes(d)
+	params := c.Params()
+	one := new(big.Int).SetInt64(1)
+	n := new(big.Int).Sub(params.N, one)
+	if k.Cmp(n)>=0{
+      return nil,errors.New("privateKey's D is overflow.")
+	}
 	priv := new(sm2.PrivateKey)
 	priv.PublicKey.Curve = c
 	priv.D = k
 	priv.PublicKey.X, priv.PublicKey.Y = c.ScalarBaseMult(k.Bytes())
-	return priv
+	return priv,nil
 }
 
 
-//DHex是sm2私钥的关键数值
-func WritePrivateKeyToDhex(key *sm2.PrivateKey) string {
+
+func WritePrivateKeyToHex(key *sm2.PrivateKey) string {
 	return key.D.Text(16)
 }
 
-//QHex是sm2公钥的关键数值，由04+pub.X+pub.Y组成
-func ReadPublicKeyFromQhex(publicKeyFromQhex string) (*sm2.PublicKey, error) {
-	if len(publicKeyFromQhex) == 130{
-		publicKeyFromQhex = publicKeyFromQhex[2:]
-	} else {
-		return nil, errors.New("Decrypt: failed to decrypt")
+func ReadPublicKeyFromHex(Qhex string) (*sm2.PublicKey, error) {
+	q,err:=hex.DecodeString(Qhex)
+	if err!=nil{
+		return nil,err
+	}
+	if len(q)==65&&q[0]==byte(0x04){
+		q=q[1:]
+	}
+	if len(q)!=64{
+		return nil,errors.New("publicKey is not uncompressed.")
 	}
 	pub := new(sm2.PublicKey)
 	pub.Curve = sm2.P256Sm2()
-	pub.X, _ = new(big.Int).SetString(publicKeyFromQhex[:64], 16)
-	pub.Y, _ = new(big.Int).SetString(publicKeyFromQhex[64:], 16)
+	pub.X = new(big.Int).SetBytes(q[:32])
+	pub.Y = new(big.Int).SetBytes(q[32:])
 	return pub, nil
 }
 
-//QHex是sm2公钥的关键数值，由04+pub.X+pub.Y组成
-func WritePublicKeyToQhex(key *sm2.PublicKey) string {
-	x := key.X.Text(16)
-	y := key.Y.Text(16)
-	for len(x) < 64 {
-		x = "0" + x;
-	}
-	for len(y) < 64 {
-		y = "0" + y;
-	}
-	return "04" + x + y
-}
 
-//kxz:为了和openssl互通而设立的，该pem是p8格式的一部分，openssl命令行参考：openssl ecparam -genkey -name SM2 -out priv.key
-func ReadPrivateKeyFromOpenSSLPem(privateKeyPem []byte) (*sm2.PrivateKey, error) {
-	var block *pem.Block
-	block, _ = pem.Decode(privateKeyPem)
-	if block == nil {
-		return nil, errors.New("failed to decode private key")
+func WritePublicKeyToHex(key *sm2.PublicKey) string {
+	x := key.X.Bytes()
+	y := key.Y.Bytes()
+	if n := len(x); n < 32 {
+		x = append(zeroByteSlice()[:32-n], x...)
 	}
-	priv, err := ParseSm2PrivateKey(block.Bytes)
-	return priv, err
+	if n := len(y); n < 32 {
+		y = append(zeroByteSlice()[:32-n], y...)
+	}
+	c := []byte{}
+	c = append(c, x...)
+	c = append(c, y...)
+	c = append([]byte{0x04}, c...)
+	return hex.EncodeToString(c)
 }
-
-//kxz:为了和openssl互通而设立的，该pem是p8格式的一部分，openssl命令行参考：openssl ecparam -genkey -name SM2 -out priv.key
-func WritePrivateKeyToOpenSSLPem(key *sm2.PrivateKey) ([]byte, error) {
-	//x509\pkcs8.go中没有相关代码，这里直接进行实现
-	var priv sm2PrivateKey
-	priv.Version = 1
-	priv.NamedCurveOID = oidNamedCurveP256SM2
-	priv.PublicKey = asn1.BitString{Bytes: elliptic.Marshal(key.Curve, key.X, key.Y)}
-	priv.PrivateKey = key.D.Bytes()
-	der, err := asn1.Marshal(priv)
-	if err != nil {
-		return nil, err
-	}
-	block := &pem.Block{
-		Type:  "EC PRIVATE KEY",
-		Bytes: der,
-	}
-	certPem := pem.EncodeToMemory(block)
-	return certPem, nil
-}
-
 
 
 func ReadCertificateRequestFromPem(certPem []byte) (*CertificateRequest, error) {
@@ -293,4 +280,17 @@ func ParseSm2CertifateToX509(asn1data []byte) (*x509.Certificate, error) {
 		return nil, err
 	}
 	return sm2Cert.ToX509Certificate(), nil
+}
+// 32byte
+func zeroByteSlice() []byte {
+	return []byte{
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+	}
 }
