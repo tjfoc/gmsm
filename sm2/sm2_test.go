@@ -45,7 +45,17 @@ func TestSm2(t *testing.T) {
 		fmt.Printf("Error: failed to decrypt: %v\n", err)
 	}
 	fmt.Printf("clear text = %s\n", d1)
-
+	d2, err :=Encrypt(pub,msg, rand.Reader,C1C2C3)
+	if err != nil {
+		fmt.Printf("Error: failed to encrypt %s: %v\n", msg, err)
+		return
+	}
+	// fmt.Printf("Cipher text = %v\n", d0)
+	d3, err := Decrypt(priv,d2,C1C2C3)
+	if err != nil {
+		fmt.Printf("Error: failed to decrypt: %v\n", err)
+	}
+	fmt.Printf("clear text = %s\n", d3)
 	msg, _ = ioutil.ReadFile("ifile")             // 从文件读取数据
 	sign, err := priv.Sign(rand.Reader, msg, nil) // 签名
 	if err != nil {
