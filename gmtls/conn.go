@@ -1285,8 +1285,13 @@ func (c *Conn) Handshake() error {
 		c.handshakeErr = c.clientHandshake()
 	} else {
 		if c.config.GMSupport == nil {
+			// TLS Only
 			c.handshakeErr = c.serverHandshake()
+		} else if c.config.GMSupport.IsAutoSwitchMode() {
+			//  GMSSL/TLS Auto switch
+			c.handshakeErr = c.serverHandshakeAutoSwitch()
 		} else {
+			// GMSSL Only
 			c.handshakeErr = c.serverHandshakeGM()
 		}
 	}
