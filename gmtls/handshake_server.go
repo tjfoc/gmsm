@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	"github.com/tjfoc/gmsm/x509"
 )
@@ -114,6 +115,9 @@ func (c *Conn) serverHandshake() error {
 			return err
 		}
 	}
+	c.ekm = ekmFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.clientHello.random, hs.hello.random)
+	atomic.StoreUint32(&c.handshakeStatus, 1)
+
 	return nil
 }
 
