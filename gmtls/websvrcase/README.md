@@ -4,8 +4,10 @@
 
 ```
 ├─certs        // 证书以及密钥
-├─cli          // http客户端
-└─svr          // http服务端
+├─cli          // HTTP客户端Demo
+│  ├─gm        // HTTP over GMSSL GET Demo
+│  └─std       // HTTP over TLS GET Demo
+└─svr          // HTTP服务端Demo
 ```
 
 ## 服务端 GMTLS/TLS 工作逻辑
@@ -37,3 +39,4 @@
     - 根据协议版本，选择使用具体握手方式：
       - GMSSL: 创建上下文`serverHandshakeStateGM`，进入GMSSL握手流程。
       - TLS: 创建上下文`serverHandshakeState`，进入TLS握手流程。
+
