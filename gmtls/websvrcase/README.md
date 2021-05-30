@@ -1,4 +1,4 @@
-# TLS/GMSSL Web 服务器
+# TLS/GMSSL 服务端协议自适应
 
 目录结构说明:
 
@@ -40,3 +40,91 @@
       - GMSSL: 创建上下文`serverHandshakeStateGM`，进入GMSSL握手流程。
       - TLS: 创建上下文`serverHandshakeState`，进入TLS握手流程。
 
+
+在GMSSL/TLS模式的服务端运行过程中，如何根据客户端版本选择需要使用的证书以及密钥？
+
+自动切换模式，同时需要为服务端提供2份证书与密钥对（一份用于标准的TLS、一份用于GMSSL）,
+在运行过程需要使用到`gmtls.Config#GetCertificate`方法来根据客户端的版本选择出合适的
+证书密钥对，即在客户端版本是GMSSL的时候返回SM2签名证书密钥对；在客户端版本是标准的TLS时
+返还RSA/ECC的证书密钥对，以次来动态适应不同客户端的连接需求。
+针对于GMSSL特殊的双证书需求，特别为`gmtls.Config`增加了一个方法`gmtls.Config#GetKECertificate`
+通过该方法来提供GMSSL密钥交换过程中使用密钥对。
+
+更多细节实现见: [auto_handshake_server](../auto_handshake_server.go)
+
+## GMSSL/TLS 自动切换模式
+
+快速开始：
+
+1. 准备 RSA、SM2签名、SM2加密，证书以及密钥对。
+2. 调用`gmtls.NewBasicAutoSwitchConfig`构造基础的配置对象。
+3. Use it.
+
+```go
+func main() {
+	config, err := gmtls.NewBasicAutoSwitchConfig(&sigCert, &encCert, &rsaKeypair)
+	if err != nil {
+		panic(err)
+	}
+
+	ln, err := gmtls.Listen("tcp", ":443", config)
+	if err != nil {
+		panic(err)
+	}
+	defer ln.Close()
+
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Fprintf(writer, "hello\n")
+	})
+	err = http.Serve(ln, nil)
+	if err != nil {
+		panic(err)
+	}
+}	
+```
+
+
+详细服务端的配置流程如下：
+
+1. 准备：
+   - SM2签名密钥对、证书：`sigCert`
+   - SM2加密密钥对、证书：`encCert`
+   - RSA/ECC加密密钥对、证书：`rsaKeypair`
+2. 创建一个实现`gmtls.Config#GetCertificate`方法签名的方法，方法需要根据支持的签名类型：
+    - 含有GMSSL版本：返回SM2签名证书密钥对(`sigCert`)。
+    - 不含有GMSSL版本：返回RSA签名证书密钥对(`rsaKeypair`)。
+3. 创建一个实现`gmtls.Config#GetKECertificate`方法签名的方法，固定返回SM2加密证书密钥对(`encCert`)。
+4. 创建`GMSupport`并启用，自动切换模式。
+5. 创建`gmtls.Config`对象，接下就可以启动服务端实现自动切换功能。
+
+```go
+// Step 1:
+fncGetSignCertKeypair := func(info *gmtls.ClientHelloInfo) (*gmtls.Certificate, error) {
+    gmFlag := false
+    // 检查支持协议中是否包含GMSSL
+    for _, v := range info.SupportedVersions {
+        if v == gmtls.VersionGMSSL {
+        gmFlag = true
+        break
+        }
+    }
+    if gmFlag {
+        return &sigCert, nil
+    } else {
+        return &rsaKeypair, nil
+    }
+}
+
+fncGetEncCertKeypair := func(info *gmtls.ClientHelloInfo) (*gmtls.Certificate, error) {
+    return &encCert, nil
+}
+support := gmtls.NewGMSupport()
+support.EnableMixMode()
+config := &gmtls.Config{
+    GMSupport:        support,
+    GetCertificate:   fncGetSignCertKeypair,
+    GetKECertificate: fncGetEncCertKeypair,
+}
+```
+
+更多细节请参考： [HTTP over GMTLS/TLS Server Demo](./svr/main.go)

@@ -73,7 +73,6 @@ func loadAutoSwitchConfig() (*gmtls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	sigCert, err := gmtls.LoadX509KeyPair(sm2SignCertPath, sm2SignKeyPath)
 	if err != nil {
 		return nil, err
@@ -83,30 +82,5 @@ func loadAutoSwitchConfig() (*gmtls.Config, error) {
 		return nil, err
 
 	}
-	fncGetSignCertKeypair := func(info *gmtls.ClientHelloInfo) (*gmtls.Certificate, error) {
-		gmFlag := false
-		for _, v := range info.SupportedVersions {
-			if v == gmtls.VersionGMSSL {
-				gmFlag = true
-				break
-			}
-		}
-
-		if gmFlag {
-			return &sigCert, nil
-		} else {
-			return &rsaKeypair, nil
-		}
-	}
-
-	fncGetEncCertKeypair := func(info *gmtls.ClientHelloInfo) (*gmtls.Certificate, error) {
-		return &encCert, nil
-	}
-	support := gmtls.NewGMSupport()
-	support.EnableMixMode()
-	return &gmtls.Config{
-		GMSupport:        support,
-		GetCertificate:   fncGetSignCertKeypair,
-		GetKECertificate: fncGetEncCertKeypair,
-	}, nil
+	return gmtls.NewBasicAutoSwitchConfig(&sigCert, &encCert, &rsaKeypair)
 }
