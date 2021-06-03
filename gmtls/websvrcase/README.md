@@ -148,7 +148,8 @@ config.ClientAuth = gmtls.RequireAndVerifyClientCert
 
 > 更多细节请参考：
 > 
-> - [SM2 Client cli/gm/main.go #bothAuthConfig](./cli/gm/main.go)
+> - [自适应Web服务端 Demo svr/main.go #loadAutoSwitchConfigClientAuth](./svr/main.go)
+
 
 
 客户端的启用双向身份认证也需要配置，只需要提供认证所使用的证书密钥对就可以。
@@ -166,4 +167,5 @@ config ,err = &gmtls.Config{
 
 > 更多细节请参考：
 >
-> - [RSA Standcard Client cli/std/main.go #bothAuthConfig](./cli/std/main.go)
+> - [国际算法标准 客户端 Demo cli/std/main.go #bothAuthConfig](./cli/std/main.go)
+> - [国密算法标准 客户端 Demo cli/gm/main.go #bothAuthConfig](./cli/gm/main.go)
