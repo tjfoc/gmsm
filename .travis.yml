@@ -21,6 +21,9 @@ install:
   - go build -v ./pkcs12
   - go build -v ./gmtls/gmcredentials
   - go build -v ./gmtls/gmcredentials/echo
+  - go build -v ./gmtls/websvrcase
+ 
+
 
 script:
   - go vet ./sm2
@@ -29,5 +32,6 @@ script:
   - go vet ./x509
   - go vet ./pkcs12
   - go vet ./gmtls/gmcredentials
+  - go vet ./gmtls/websvrcase
   - golint .
   - go test -v ./...

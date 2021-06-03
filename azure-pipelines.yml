@@ -19,6 +19,7 @@ steps:
   - script: go build -v ./pkcs12
   - script: go build -v ./gmtls/gmcredentials
   - script: go build -v ./gmtls/gmcredentials/echo
+  - script: go build -v ./gmtls/websvrcase
   - script: go mod vendor
   - script: go vet ./sm2
   - script: go vet ./sm3
@@ -26,6 +27,7 @@ steps:
   - script: go vet ./x509
   - script: go vet ./pkcs12
   - script: go vet ./gmtls/gmcredentials
+  - script: go vet ./gmtls/websvrcase
   - script: go test -v ./...
     displayName: go test recursive
  

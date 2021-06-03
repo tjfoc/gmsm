@@ -127,4 +127,4 @@ config := &gmtls.Config{
 }
 ```
 
-更多细节请参考： [HTTP over GMTLS/TLS Server Demo](./svr/main.go)
+更多细节请参考： [HTTP over GMTLS/TLS Server Demo](./autoTLS.go)
