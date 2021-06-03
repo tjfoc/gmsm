@@ -127,4 +127,43 @@ config := &gmtls.Config{
 }
 ```
 
-更多细节请参考： [HTTP over GMTLS/TLS Server Demo](./svr/main.go)
+> 更多细节请参考： [HTTP over GMTLS/TLS Server Demo](./svr/main.go)
+
+
+## 双向身份认证
+
+服务端开启双向身份认证，需要配置而外参数`ClientAuth`。
+
+建议使用`gmtls.RequireAndVerifyClientCert`表明服务端需要客户端证书请求且需要验证客户端证书。
+
+```go
+config, err := gmtls.NewBasicAutoSwitchConfig(&sigCert, &encCert, &rsaKeypair)
+if err != nil {
+	panic(err)
+}
+
+// 开启客户端的身份认证
+config.ClientAuth = gmtls.RequireAndVerifyClientCert
+```
+
+> 更多细节请参考：
+> 
+> - [SM2 Client cli/gm/main.go #bothAuthConfig](./cli/gm/main.go)
+
+
+客户端的启用双向身份认证也需要配置，只需要提供认证所使用的证书密钥对就可以。
+
+例如：
+
+```go
+config ,err = &gmtls.Config{
+		GMSupport:          &gmtls.GMSupport{},
+		RootCAs:            certPool,
+		Certificates:       []gmtls.Certificate{authKeypair},
+		InsecureSkipVerify: false,
+}
+```
+
+> 更多细节请参考：
+>
+> - [RSA Standcard Client cli/std/main.go #bothAuthConfig](./cli/std/main.go)
