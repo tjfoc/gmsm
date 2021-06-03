@@ -10,7 +10,8 @@ import (
 func main() {
 	//config, err := loadRsaConfig()
 	//config, err := loadSM2Config()
-	config, err := loadAutoSwitchConfig()
+	//config, err := loadAutoSwitchConfig()
+	config, err := loadAutoSwitchConfigClientAuth()
 	if err != nil {
 		panic(err)
 	}
@@ -83,4 +84,15 @@ func loadAutoSwitchConfig() (*gmtls.Config, error) {
 
 	}
 	return gmtls.NewBasicAutoSwitchConfig(&sigCert, &encCert, &rsaKeypair)
+}
+
+// 要求客户端身份认证
+func loadAutoSwitchConfigClientAuth() (*gmtls.Config, error) {
+	config, err := loadAutoSwitchConfig()
+	if err != nil {
+		return nil, err
+	}
+	// 设置需要客户端证书请求，标识需要进行客户端的身份认证
+	config.ClientAuth = gmtls.RequireAndVerifyClientCert
+	return config, nil
 }

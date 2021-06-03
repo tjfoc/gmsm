@@ -10,27 +10,22 @@ import (
 
 const (
 	SM2CaCertPath   = "gmtls/websvrcase/certs/SM2_CA.cer"
-	sm2SignCertPath = "gmtls/websvrcase/certs/sm2_sign_cert.cer"
-	sm2SignKeyPath  = "gmtls/websvrcase/certs/sm2_sign_key.pem"
-	sm2EncCertPath  = "gmtls/websvrcase/certs/sm2_enc_cert.cer"
-	sm2EncKeyPath   = "gmtls/websvrcase/certs/sm2_enc_key.pem"
+	SM2AuthCertPath = "gmtls/websvrcase/certs/sm2_auth_cert.cer"
+	SM2AuthKeyPath  = "gmtls/websvrcase/certs/sm2_auth_key.pem"
 )
 
 func main() {
+	// 单向身份认证
+	//config,err := singleSideAuthConfig()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
-	// 信任的根证书
-	certPool := x509.NewCertPool()
-	cacert, err := ioutil.ReadFile(SM2CaCertPath)
+	// 双向身份认证
+	config, err := bothAuthConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
-	certPool.AppendCertsFromPEM(cacert)
-
-	config := &gmtls.Config{
-		GMSupport: &gmtls.GMSupport{},
-		RootCAs:   certPool,
-	}
-
 	conn, err := gmtls.Dial("tcp", "localhost:443", config)
 	if err != nil {
 		panic(err)
@@ -51,4 +46,42 @@ func main() {
 		}
 	}
 	fmt.Println()
+}
+
+// 获取 客户端服务端双向身份认证 配置
+func bothAuthConfig() (*gmtls.Config, error) {
+	// 信任的根证书
+	certPool := x509.NewCertPool()
+	cacert, err := ioutil.ReadFile(SM2CaCertPath)
+	if err != nil {
+		return nil, err
+	}
+	certPool.AppendCertsFromPEM(cacert)
+	authKeypair, err := gmtls.LoadX509KeyPair(SM2AuthCertPath, SM2AuthKeyPath)
+	if err != nil {
+		return nil, err
+	}
+	return &gmtls.Config{
+		GMSupport:          &gmtls.GMSupport{},
+		RootCAs:            certPool,
+		Certificates:       []gmtls.Certificate{authKeypair},
+		InsecureSkipVerify: false,
+	}, nil
+
+}
+
+// 获取 单向身份认证（只认证服务端） 配置
+func singleSideAuthConfig() (*gmtls.Config, error) {
+	// 信任的根证书
+	certPool := x509.NewCertPool()
+	cacert, err := ioutil.ReadFile(SM2CaCertPath)
+	if err != nil {
+		return nil, err
+	}
+	certPool.AppendCertsFromPEM(cacert)
+
+	return &gmtls.Config{
+		GMSupport: &gmtls.GMSupport{},
+		RootCAs:   certPool,
+	}, nil
 }
