@@ -13,6 +13,7 @@ before_install:
 install:
   - go get -u golang.org/x/lint/golint
   - export golint=$(go list -f {{.Target}} golang.org/x/lint/golint)
+  - export GODEBUG=x509ignoreCN=0
   - go mod vendor
   - go build -v ./sm2
   - go build -v ./sm3
@@ -21,7 +22,7 @@ install:
   - go build -v ./pkcs12
   - go build -v ./gmtls/gmcredentials
   - go build -v ./gmtls/gmcredentials/echo
-
+  - go build -v ./gmtls/websvrcase
 script:
   - go vet ./sm2
   - go vet ./sm3
@@ -29,5 +30,6 @@ script:
   - go vet ./x509
   - go vet ./pkcs12
   - go vet ./gmtls/gmcredentials
+  - go vet ./gmtls/websvrcase
   - golint .
   - go test -v ./...
