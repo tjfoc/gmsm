@@ -351,6 +351,10 @@ func (ka *eccKeyAgreementGM) processClientKeyExchange(config *Config, cert *Cert
 		return nil, errors.New("tls: certificate private key does not implement crypto.Decrypter")
 	}
 
+	cipher, err := sm2.CipherUnmarshal(cipher)
+	if err != nil {
+		return nil, err
+	}
 	plain, err := decrypter.Decrypt(config.rand(), cipher, nil)
 	if err != nil {
 		return nil, err
@@ -429,7 +433,12 @@ func (ka *eccKeyAgreementGM) generateClientKeyExchange(config *Config, clientHel
 	}
 	pubKey := ka.encipherCert.PublicKey.(*ecdsa.PublicKey)
 	sm2PubKey := &sm2.PublicKey{Curve: pubKey.Curve, X: pubKey.X, Y: pubKey.Y}
-	encrypted, err := sm2.Encrypt(sm2PubKey, preMasterSecret, config.rand(),0)
+	encrypted, err := sm2.Encrypt(sm2PubKey, preMasterSecret, config.rand(), sm2.C1C3C2)
+	if err != nil {
+		return nil, nil, err
+	}
+	// GMT0024 通信时密文采用 GMT009 ASN1方式组织
+	encrypted, err = sm2.CipherMarshal(encrypted)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -198,7 +198,17 @@ func mutualCipherSuiteGM(have []uint16, want uint16) *cipherSuite {
 	return nil
 }
 
+const (
+	ModeGMSSLOnly  = "GMSSLOnly"  // 仅支持 国密SSL模式
+	ModeAutoSwitch = "AutoSwitch" // GMSSL/TLS 自动切换模式
+)
+
 type GMSupport struct {
+	WorkMode string // 工作模式
+}
+
+func NewGMSupport() *GMSupport {
+	return &GMSupport{WorkMode: ModeGMSSLOnly}
 }
 
 func (support *GMSupport) GetVersion() uint16 {
@@ -211,6 +221,17 @@ func (support *GMSupport) IsAvailable() bool {
 
 func (support *GMSupport) cipherSuites() []*cipherSuite {
 	return gmCipherSuites
+}
+
+// EnableMixMode 启用 GMSSL/TLS 自动切换的工作模式
+func (support *GMSupport) EnableMixMode() {
+	support.WorkMode = ModeAutoSwitch
+}
+
+// IsAutoSwitchMode 是否处于混合工作模式
+// return true - GMSSL/TLS 均支持, false - 不处于混合模式
+func (support *GMSupport) IsAutoSwitchMode() bool {
+	return support.WorkMode == ModeAutoSwitch
 }
 
 // LoadGMX509KeyPairs reads and parses two public/private key pairs from pairs

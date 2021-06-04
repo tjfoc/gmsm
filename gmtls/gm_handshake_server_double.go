@@ -718,13 +718,17 @@ func (hs *serverHandshakeStateGM) clientHelloInfo() *ClientHelloInfo {
 	if hs.cachedClientHelloInfo != nil {
 		return hs.cachedClientHelloInfo
 	}
+	// GM握手实现只需要支持 GMSSL版本就可以
+	supportedVersions := []uint16{VersionGMSSL}
 
-	var supportedVersions []uint16
-	if hs.clientHello.vers > VersionTLS12 {
-		supportedVersions = suppVersArray[:]
-	} else if hs.clientHello.vers >= VersionSSL30 {
-		supportedVersions = suppVersArray[VersionTLS12-hs.clientHello.vers:]
-	}
+	//var supportedVersions []uint16
+	//if hs.clientHello.vers > VersionTLS12 {
+	//	supportedVersions = suppVersArray[:]
+	//} else if hs.clientHello.vers >= VersionSSL30 {
+	//	supportedVersions = suppVersArray[VersionTLS12-hs.clientHello.vers:]
+	//}else{
+	//
+	//}
 
 	hs.cachedClientHelloInfo = &ClientHelloInfo{
 		CipherSuites:      hs.clientHello.cipherSuites,

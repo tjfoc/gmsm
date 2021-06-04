@@ -391,6 +391,12 @@ type Config struct {
 	// first element of Certificates will be used.
 	GetCertificate func(*ClientHelloInfo) (*Certificate, error)
 
+	// GetKECertificate 获取密钥交换证书（加密证书）
+	// 这个方法只有在使用Config中Certificates为空或长度小于2时，才会被调用。
+	// 如果该方法为空，则默认从证书列表中 Certificates 取出第二个位置的证书，也就是加密证书。
+	// 该方法只有GMSSL流程中才会调用。
+	GetKECertificate func(*ClientHelloInfo) (*Certificate, error)
+
 	// GetClientCertificate, if not nil, is called when a server requests a
 	// certificate from a client. If set, the contents of Certificates will
 	// be ignored.
@@ -732,6 +738,23 @@ func (c *Config) mutualVersion(vers uint16) (uint16, bool) {
 		vers = maxVersion
 	}
 	return vers, true
+}
+
+// getCertificate 返回密钥交换使用的证书及密钥
+// 该方法只有GMSSL会调用
+// 如果 Certificates 长度大于等于2时，默认返回第2个证书密钥
+// 如果 Certificates 为空或不足2时，调用 GetEKCertificate 方法获取。
+func (c *Config) getEKCertificate(clientHello *ClientHelloInfo) (*Certificate, error) {
+	if c.GetKECertificate != nil && (len(c.Certificates) < 2) {
+		cert, err := c.GetKECertificate(clientHello)
+		if cert != nil || err != nil {
+			return cert, err
+		}
+	}
+	if len(c.Certificates) >= 2 {
+		return &c.Certificates[1], nil
+	}
+	return nil, errors.New("tls: no key exchange (encrypt) certificate configured")
 }
 
 // getCertificate returns the best certificate for the given ClientHelloInfo,
