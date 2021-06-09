@@ -22,7 +22,7 @@ install:
   - go build -v ./pkcs12
   - go build -v ./gmtls/gmcredentials
   - go build -v ./gmtls/gmcredentials/echo
-  - go build -v ./gmtls/websvrcase
+  - go build -v ./gmtls/websvr
 script:
   - go vet ./sm2
   - go vet ./sm3
@@ -30,6 +30,6 @@ script:
   - go vet ./x509
   - go vet ./pkcs12
   - go vet ./gmtls/gmcredentials
-  - go vet ./gmtls/websvrcase
+  - go vet ./gmtls/websvr
   - golint .
   - go test -v ./...
