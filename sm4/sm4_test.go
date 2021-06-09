@@ -23,6 +23,7 @@ import (
 
 func TestSM4(t *testing.T) {
 	key := []byte("1234567890abcdef")
+
 	fmt.Printf("key = %v\n", key)
 	data := []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10}
 	err := WriteKeyToPemFile("key.pem", key, nil)
@@ -41,6 +42,9 @@ func TestSM4(t *testing.T) {
 		return
 	}
 	fmt.Printf("ecbMsg = %x\n", ecbMsg)
+	iv := []byte("0000000000000000")
+	err = SetIV(iv)
+	fmt.Printf("err = %v\n", err)
 	ecbDec, err := Sm4Ecb(key, ecbMsg, false)
 	if err != nil {
 		t.Errorf("sm4 dec error:%s", err)
@@ -64,7 +68,6 @@ func TestSM4(t *testing.T) {
 	if !testCompare(data, cbcDec) {
 		t.Errorf("sm4 self enc and dec failed")
 	}
-
 
 	cbcMsg, err = Sm4CFB(key, data, true)
 	if err != nil {
@@ -148,4 +151,3 @@ func testCompare(key1, key2 []byte) bool {
 	}
 	return true
 }
-
