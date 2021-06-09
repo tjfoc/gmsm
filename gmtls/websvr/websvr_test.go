@@ -1,5 +1,4 @@
-package websvrcase
-
+package websvr
 import (
 	"crypto/tls"
 	"fmt"
@@ -14,70 +13,18 @@ import (
 )
 
 const (
-	rsaCertPath = "certs/rsa_sign.cer"
-	rsaKeyPath  = "certs/rsa_sign_key.pem"
+	// rsaCertPath = "certs/rsa_sign.cer"
+	// rsaKeyPath  = "certs/rsa_sign_key.pem"
     rsaCacertPath="certs/rsa_CA.cer"
-	sm2SignCertPath = "certs/sm2_sign_cert.cer"
-	sm2SignKeyPath  = "certs/sm2_sign_key.pem"
-	sm2EncCertPath  = "certs/sm2_enc_cert.cer"
-	sm2EncKeyPath   = "certs/sm2_enc_key.pem"
-	SM2CaCertPath   = "certs/SM2_CA.cer"
+	// sm2SignCertPath = "certs/sm2_sign_cert.cer"
+	// sm2SignKeyPath  = "certs/sm2_sign_key.pem"
+	// sm2EncCertPath  = "certs/sm2_enc_cert.cer"
+	// sm2EncKeyPath   = "certs/sm2_enc_key.pem"
+	// SM2CaCertPath   = "certs/SM2_CA.cer"
 	sm2UserCertPath ="certs/sm2_auth_cert.cer"
 	sm2UserKeyPath= "certs/sm2_auth_key.pem"
 )
 
-// RSA配置
-func loadRsaConfig() (*gmtls.Config, error) {
-	cert, err := gmtls.LoadX509KeyPair(rsaCertPath, rsaKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	return &gmtls.Config{Certificates: []gmtls.Certificate{cert}}, nil
-}
-
-// SM2配置
-func loadSM2Config() (*gmtls.Config, error) {
-	sigCert, err := gmtls.LoadX509KeyPair(sm2SignCertPath, sm2SignKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	encCert, err := gmtls.LoadX509KeyPair(sm2EncCertPath, sm2EncKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	return &gmtls.Config{
-		GMSupport:    &gmtls.GMSupport{},
-		Certificates: []gmtls.Certificate{sigCert, encCert},
-	}, nil
-}
-
-// 切换GMSSL/TSL
-func loadAutoSwitchConfig() (*gmtls.Config, error) {
-	rsaKeypair, err := gmtls.LoadX509KeyPair(rsaCertPath, rsaKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	sigCert, err := gmtls.LoadX509KeyPair(sm2SignCertPath, sm2SignKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	encCert, err := gmtls.LoadX509KeyPair(sm2EncCertPath, sm2EncKeyPath)
-	if err != nil {
-		return nil, err
-
-	}
-	return gmtls.NewBasicAutoSwitchConfig(&sigCert, &encCert, &rsaKeypair)
-}
-// 要求客户端身份认证
-func loadAutoSwitchConfigClientAuth() (*gmtls.Config, error) {
-	config, err := loadAutoSwitchConfig()
-	if err != nil {
-		return nil, err
-	}
-	// 设置需要客户端证书请求，标识需要进行客户端的身份认证
-	config.ClientAuth = gmtls.RequireAndVerifyClientCert
-	return config, nil
-}
 
 func ServerRun() {
 	//config, err := loadRsaConfig()
