@@ -4,7 +4,7 @@ pool:
 strategy:
   matrix:
     LTS:
-      goVersion: '1.13'
+      goVersion: '1.15'
     latest:
       goVersion: '1.14'
 
