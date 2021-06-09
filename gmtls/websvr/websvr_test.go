@@ -35,7 +35,7 @@ func ServerRun() {
 		panic(err)
 	}
 
-	ln, err := gmtls.Listen("tcp", ":443", config)
+	ln, err := gmtls.Listen("tcp", ":50051", config)
 	if err != nil {
 		log.Println(err)
 		return
@@ -56,7 +56,7 @@ func ClientRun() {
 		MaxVersion:         gmtls.VersionTLS12,
 		InsecureSkipVerify: true,
 	}
-	conn, err := tls.Dial("tcp", "localhost:443", &config)
+	conn, err := tls.Dial("tcp", "localhost:50051", &config)
 	if err != nil {
 		panic(err)
 	}
@@ -96,7 +96,7 @@ func gmClientRun() {
 		Certificates: []gmtls.Certificate{cert},
 	}
 
-	conn, err := gmtls.Dial("tcp", "localhost:443", config)
+	conn, err := gmtls.Dial("tcp", "localhost:50051", config)
 	if err != nil {
 		panic(err)
 	}
