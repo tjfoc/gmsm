@@ -45,13 +45,13 @@ func TestSm2(t *testing.T) {
 		fmt.Printf("Error: failed to decrypt: %v\n", err)
 	}
 	fmt.Printf("clear text = %s\n", d1)
-	d2, err :=Encrypt(pub,msg, rand.Reader,C1C2C3)
+	d2, err := Encrypt(pub, msg, rand.Reader, C1C2C3)
 	if err != nil {
 		fmt.Printf("Error: failed to encrypt %s: %v\n", msg, err)
 		return
 	}
 	// fmt.Printf("Cipher text = %v\n", d0)
-	d3, err := Decrypt(priv,d2,C1C2C3)
+	d3, err := Decrypt(priv, d2, C1C2C3)
 	if err != nil {
 		fmt.Printf("Error: failed to decrypt: %v\n", err)
 	}
@@ -168,4 +168,15 @@ func TestKEB2(t *testing.T) {
 	if bytes.Compare(Sa, S2) != 0 {
 		t.Error("hash verfication failed")
 	}
+}
+
+func Test_kdf(t *testing.T) {
+
+	buff := make([]byte, 8)
+	_, _ = rand.Read(buff)
+	klen := 64
+	K, _ := kdf(klen, buff)
+	fmt.Printf("klen: %d Z: %02X\n", klen, buff)
+	fmt.Printf("K: %02X\n", K)
+
 }
