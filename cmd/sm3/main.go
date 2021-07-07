@@ -10,10 +10,6 @@ import (
 	"github.com/pedroalbanese/gmsm/sm3"
 )
 
-var (
-	version = flag.Bool("version", false, "Print version information")
-)
-
 func main() {
 	flag.Parse()
 	h := sm3.New()
