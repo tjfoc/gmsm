@@ -1,4 +1,3 @@
-//go:generate goversioninfo -manifest=testdata/resource/goversioninfo.exe.manifest
 package main
 
 import (
