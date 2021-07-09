@@ -13,12 +13,12 @@ import (
 )
 
 var (
-	dec     = flag.Bool("sm2dec", false, "Decrypt with asymmetric SM2 PrivateKey.")
-	enc     = flag.Bool("sm2enc", false, "Encrypt with asymmetric SM2 Publickey.")
-	gen     = flag.Bool("keygen", false, "Generate asymmetric key pair.")
+	dec     = flag.Bool("dec", false, "Decrypt with PrivateKey.")
+	enc     = flag.Bool("enc", false, "Encrypt with Publickey.")
+	gen     = flag.Bool("gen", false, "Generate asymmetric key pair.")
 	key     = flag.String("key", "", "Private/Public key.")
-	sig     = flag.Bool("sign", false, "Sign with PrivateKey.")
-	sign    = flag.String("signature", "", "Input signature. (for verification only)")
+	sign    = flag.Bool("sign", false, "Sign with PrivateKey.")
+	sig     = flag.String("sig", "", "Input signature. (for verification only)")
 	verify  = flag.Bool("verify", false, "Verify with PublicKey.")
 )
 
@@ -42,44 +42,7 @@ func main() {
 		fmt.Println("Public= " + WritePublicKeyToHex(pub))
 	}
 
-	if *enc {
-		pub, err := ReadPublicKeyFromHex(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		scanner := bufio.NewScanner(os.Stdin)
-		if !scanner.Scan() {
-			log.Printf("Failed to read: %v", scanner.Err())
-			return
-		}
-		line := scanner.Bytes()
-		ciphertxt, err := pub.EncryptAsn1([]byte(line), rand.Reader)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%x\n", ciphertxt)
-	}
-
-	if *dec {
-		priv, err := ReadPrivateKeyFromHex(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		scanner := bufio.NewScanner(os.Stdin)
-		if !scanner.Scan() {
-			log.Printf("Failed to read: %v", scanner.Err())
-			return
-		}
-		line := scanner.Bytes()
-		str, _ := hex.DecodeString(string(line))
-		plaintxt, err := priv.DecryptAsn1([]byte(str))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s\n", plaintxt)
-	}
-
-	if *sig {
+	if *sign {
 		priv, err := ReadPrivateKeyFromHex(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -108,7 +71,7 @@ func main() {
 			return
 		}
 		line := scanner.Bytes()
-		signature, _ := hex.DecodeString(*sign)
+		signature, _ := hex.DecodeString(*sig)
 		isok := pub.Verify([]byte(line), []byte(signature))
 		if isok == true {
 			fmt.Printf("Verified: %v\n", isok)
