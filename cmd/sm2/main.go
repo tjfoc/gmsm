@@ -13,13 +13,13 @@ import (
 )
 
 var (
-	dec  = flag.Bool("dec", false, "Decrypt with PrivateKey.")
-	enc  = flag.Bool("enc", false, "Encrypt with Publickey.")
-	gen  = flag.Bool("gen", false, "Generate asymmetric key pair.")
-	key  = flag.String("key", "", "Private/Public key.")
-	sgn  = flag.Bool("sgn", false, "Sign with PrivateKey.")
-	sig  = flag.String("sig", "", "Input signature.")
-	vfy  = flag.Bool("vfy", false, "Verify with PublicKey.")
+	dec = flag.Bool("dec", false, "Decrypt with PrivateKey.")
+	enc = flag.Bool("enc", false, "Encrypt with Publickey.")
+	gen = flag.Bool("gen", false, "Generate asymmetric key pair.")
+	key = flag.String("key", "", "Private/Public key.")
+	sgn = flag.Bool("sgn", false, "Sign with PrivateKey.")
+	sig = flag.String("sig", "", "Input signature.")
+	vfy = flag.Bool("vfy", false, "Verify with PublicKey.")
 )
 
 func main() {
