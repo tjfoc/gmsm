@@ -13,13 +13,13 @@ import (
 )
 
 var (
-	dec     = flag.Bool("dec", false, "Decrypt with asymmetric SM2 PrivateKey.")
-	enc     = flag.Bool("enc", false, "Encrypt with asymmetric SM2 Publickey.")
-	gen     = flag.Bool("gen", false, "Generate asymmetric key pair.")
-	key     = flag.String("key", "", "Private/Public key.")
-	sig     = flag.Bool("sign", false, "Sign with PrivateKey.")
-	sign    = flag.String("signature", "", "Input signature. (for verification only)")
-	verify  = flag.Bool("verify", false, "Verify with PublicKey.")
+	dec  = flag.Bool("dec", false, "Decrypt with asymmetric SM2 PrivateKey.")
+	enc  = flag.Bool("enc", false, "Encrypt with asymmetric SM2 Publickey.")
+	gen  = flag.Bool("gen", false, "Generate asymmetric key pair.")
+	key  = flag.String("key", "", "Private/Public key.")
+	sgn  = flag.Bool("sgn", false, "Sign with PrivateKey.")
+	sig  = flag.String("sig", "", "Input signature. (for verification only)")
+	vfy  = flag.Bool("vfy", false, "Verify with PublicKey.")
 )
 
 func main() {
@@ -79,7 +79,7 @@ func main() {
 		fmt.Printf("%s\n", plaintxt)
 	}
 
-	if *sig {
+	if *sgn {
 		priv, err := ReadPrivateKeyFromHex(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -97,7 +97,7 @@ func main() {
 		fmt.Printf("%x\n", sign)
 	}
 
-	if *verify {
+	if *vfy {
 		pub, err := ReadPublicKeyFromHex(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -108,7 +108,7 @@ func main() {
 			return
 		}
 		line := scanner.Bytes()
-		signature, _ := hex.DecodeString(*sign)
+		signature, _ := hex.DecodeString(*sig)
 		isok := pub.Verify([]byte(line), []byte(signature))
 		if isok == true {
 			fmt.Printf("Verified: %v\n", isok)
