@@ -1,4 +1,5 @@
-module github.com/tjfoc/gmsm/v2
+module github.com/tjfoc/gmsm
+
 go 1.14
 
 require (
