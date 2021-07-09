@@ -26,8 +26,6 @@ func main() {
 	flag.Parse()
 
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "GMSM Cipher Suite - Chinese National Standard Toolkit")
-		fmt.Fprintln(os.Stderr, "Copyright (c) 2020-2021 Pedro Albanese. All rights reserved.\n")
 		fmt.Fprintln(os.Stderr, "Usage of", os.Args[0]+":")
 		flag.PrintDefaults()
 		os.Exit(0)
