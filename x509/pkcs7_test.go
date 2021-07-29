@@ -135,7 +135,7 @@ func TestPKCS7SM2(t *testing.T) {
 	}
 
 	content := []byte("this is test")
-	data, err := PKCS7EncryptSM2(content, []*Certificate{cert})
+	data, err := PKCS7EncryptSM2(content, []*Certificate{cert}, sm2.C1C3C2)
 	if err != nil {
 		t.Fatal("failed to PKCS7Encrypt ")
 	}
@@ -144,7 +144,7 @@ func TestPKCS7SM2(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to ParsePKCS7 ")
 	}
-	decryptData, err := pk7Data.DecryptSM2(cert, priv)
+	decryptData, err := pk7Data.DecryptSM2(cert, priv, sm2.C1C3C2)
 	if err != nil {
 		t.Fatal("failed to PKCS7Decrypt ")
 	}

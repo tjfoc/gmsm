@@ -366,7 +366,7 @@ func (p7 *PKCS7) Decrypt(cert *Certificate, pk crypto.PrivateKey) ([]byte, error
 	return nil, ErrPKCS7UnsupportedAlgorithm
 }
 
-func (p7 *PKCS7) DecryptSM2(cert *Certificate, pk crypto.PrivateKey) ([]byte, error) {
+func (p7 *PKCS7) DecryptSM2(cert *Certificate, pk crypto.PrivateKey, mode int) ([]byte, error) {
 	data, ok := p7.raw.(envelopedData)
 	if !ok {
 		return nil, ErrNotEncryptedContent
@@ -378,7 +378,7 @@ func (p7 *PKCS7) DecryptSM2(cert *Certificate, pk crypto.PrivateKey) ([]byte, er
 
 	if priv := pk.(*sm2.PrivateKey); priv != nil {
 		var contentKey []byte
-		contentKey, err := sm2.Decrypt(priv, recipient.EncryptedKey, sm2.C1C3C2)
+		contentKey, err := sm2.Decrypt(priv, recipient.EncryptedKey, mode)
 		if err != nil {
 			return nil, err
 		}
@@ -999,7 +999,7 @@ func encryptKey(key []byte, recipient *Certificate) ([]byte, error) {
 
 
 
-func PKCS7EncryptSM2(content []byte, recipients []*Certificate) ([]byte, error) {
+func PKCS7EncryptSM2(content []byte, recipients []*Certificate, mode int) ([]byte, error) {
 	var eci *encryptedContentInfo
 	var key []byte
 	var err error
@@ -1023,7 +1023,7 @@ func PKCS7EncryptSM2(content []byte, recipients []*Certificate) ([]byte, error) 
 	// Prepare each recipient's encrypted cipher key
 	recipientInfos := make([]recipientInfo, len(recipients))
 	for i, recipient := range recipients {
-		encrypted, err := encryptKeySM2(key, recipient)
+		encrypted, err := encryptKeySM2(key, recipient, mode)
 		if err != nil {
 			return nil, err
 		}
@@ -1063,13 +1063,13 @@ func PKCS7EncryptSM2(content []byte, recipients []*Certificate) ([]byte, error) 
 }
 
 
-func encryptKeySM2(key []byte, recipient *Certificate) ([]byte, error) {
+func encryptKeySM2(key []byte, recipient *Certificate, mode int) ([]byte, error) {
 	if pub := recipient.PublicKey.(*ecdsa.PublicKey); pub != nil {
 		pubkey := &sm2.PublicKey{}
 		pubkey.Curve = pub.Curve
 		pubkey.Y = pub.Y
 		pubkey.X = pub.X
-		return sm2.Encrypt(pubkey, key, rand.Reader,sm2.C1C3C2)
+		return sm2.Encrypt(pubkey, key, rand.Reader, mode)
 	}
 	return nil, ErrPKCS7UnsupportedAlgorithm
 }
