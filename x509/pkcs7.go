@@ -6,6 +6,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/des"
+	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
@@ -17,6 +18,8 @@ import (
 	"math/big"
 	"sort"
 	"time"
+
+	"github.com/tjfoc/gmsm/sm2"
 )
 
 // PKCS7 Represents a PKCS7 structure
@@ -358,6 +361,30 @@ func (p7 *PKCS7) Decrypt(cert *Certificate, pk crypto.PrivateKey) ([]byte, error
 		}
 		return data.EncryptedContentInfo.decrypt(contentKey)
 	}
+	fmt.Printf("Unsupported Private Key: %v\n", pk)
+	// TODO: SM decript
+	return nil, ErrPKCS7UnsupportedAlgorithm
+}
+
+func (p7 *PKCS7) DecryptSM2(cert *Certificate, pk crypto.PrivateKey, mode int) ([]byte, error) {
+	data, ok := p7.raw.(envelopedData)
+	if !ok {
+		return nil, ErrNotEncryptedContent
+	}
+	recipient := selectRecipientForCertificate(data.RecipientInfos, cert)
+	if recipient.EncryptedKey == nil {
+		return nil, errors.New("pkcs7: no enveloped recipient for provided certificate")
+	}
+
+	if priv := pk.(*sm2.PrivateKey); priv != nil {
+		var contentKey []byte
+		contentKey, err := sm2.Decrypt(priv, recipient.EncryptedKey, mode)
+		if err != nil {
+			return nil, err
+		}
+		return data.EncryptedContentInfo.decrypt(contentKey)
+	}
+
 	fmt.Printf("Unsupported Private Key: %v\n", pk)
 	// TODO: SM decript
 	return nil, ErrPKCS7UnsupportedAlgorithm
@@ -966,6 +993,83 @@ func marshalEncryptedContent(content []byte) asn1.RawValue {
 func encryptKey(key []byte, recipient *Certificate) ([]byte, error) {
 	if pub := recipient.PublicKey.(*rsa.PublicKey); pub != nil {
 		return rsa.EncryptPKCS1v15(rand.Reader, pub, key)
+	}
+	return nil, ErrPKCS7UnsupportedAlgorithm
+}
+
+
+
+func PKCS7EncryptSM2(content []byte, recipients []*Certificate, mode int) ([]byte, error) {
+	var eci *encryptedContentInfo
+	var key []byte
+	var err error
+
+	// Apply chosen symmetric encryption method
+	switch ContentEncryptionAlgorithm {
+	case EncryptionAlgorithmDESCBC:
+		key, eci, err = encryptDESCBC(content)
+
+	case EncryptionAlgorithmAES128GCM:
+		key, eci, err = encryptAES128GCM(content)
+
+	default:
+		return nil, ErrUnsupportedEncryptionAlgorithm
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepare each recipient's encrypted cipher key
+	recipientInfos := make([]recipientInfo, len(recipients))
+	for i, recipient := range recipients {
+		encrypted, err := encryptKeySM2(key, recipient, mode)
+		if err != nil {
+			return nil, err
+		}
+		ias, err := cert2issuerAndSerial(recipient)
+		if err != nil {
+			return nil, err
+		}
+		info := recipientInfo{
+			Version:               0,
+			IssuerAndSerialNumber: ias,
+			KeyEncryptionAlgorithm: pkix.AlgorithmIdentifier{
+				Algorithm: oidSM3withSM2,
+			},
+			EncryptedKey: encrypted,
+		}
+		recipientInfos[i] = info
+	}
+
+	// Prepare envelope content
+	envelope := envelopedData{
+		EncryptedContentInfo: *eci,
+		Version:              0,
+		RecipientInfos:       recipientInfos,
+	}
+	innerContent, err := asn1.Marshal(envelope)
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepare outer payload structure
+	wrapper := contentInfo{
+		ContentType: oidEnvelopedData,
+		Content:     asn1.RawValue{Class: 2, Tag: 0, IsCompound: true, Bytes: innerContent},
+	}
+
+	return asn1.Marshal(wrapper)
+}
+
+
+func encryptKeySM2(key []byte, recipient *Certificate, mode int) ([]byte, error) {
+	if pub := recipient.PublicKey.(*ecdsa.PublicKey); pub != nil {
+		pubkey := &sm2.PublicKey{}
+		pubkey.Curve = pub.Curve
+		pubkey.Y = pub.Y
+		pubkey.X = pub.X
+		return sm2.Encrypt(pubkey, key, rand.Reader, mode)
 	}
 	return nil, ErrPKCS7UnsupportedAlgorithm
 }
