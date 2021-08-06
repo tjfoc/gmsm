@@ -26,7 +26,7 @@ import (
 )
 
 const BlockSize = 16
-
+var IV=make([]byte,BlockSize)
 type SM4Key []byte
 
 // Cipher is an instance of SM4 encryption.
@@ -290,6 +290,13 @@ func pkcs7UnPadding(src []byte) ([]byte, error) {
 
 	return src[:(length - unpadding)], nil
 }
+func SetIV(iv []byte)error{
+      if len(iv)!=BlockSize{
+          return errors.New("SM4: invalid iv size")
+	  }
+	  IV=iv
+	  return nil
+}
 
 func Sm4Cbc(key []byte, in []byte, mode bool) (out []byte, err error) {
 	if len(key) != BlockSize {
@@ -301,9 +308,8 @@ func Sm4Cbc(key []byte, in []byte, mode bool) (out []byte, err error) {
 	} else {
 		inData = in
 	}
-
-	iv := make([]byte, BlockSize)
-
+    iv:=make([]byte,BlockSize)
+	copy(iv,IV)
 	out = make([]byte, len(inData))
 	c, err := NewCipher(key)
 	if err != nil {
@@ -380,7 +386,6 @@ func Sm4CFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 		inData = in
 	}
 
-	iv := make([]byte, BlockSize)
 	out = make([]byte, len(inData))
 	c, err := NewCipher(key)
 	if err != nil {
@@ -393,7 +398,7 @@ func Sm4CFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 	if mode { //加密
 		for i := 0; i < len(inData)/16; i++ {
 			if i == 0 {
-				c.Encrypt(K, iv)
+				c.Encrypt(K, IV)
 				cipherBlock = xor(K[:BlockSize], inData[i*16:i*16+16])
 				copy(out[i*16:i*16+16], cipherBlock)
 				//copy(cipherBlock,out_tmp)
@@ -409,7 +414,7 @@ func Sm4CFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 		var i int = 0
 		for ; i < len(inData)/16; i++ {
 			if i == 0 {
-				c.Encrypt(K, iv)                                      //这里是加密，而不是调用解密方法Decrypt
+				c.Encrypt(K, IV)                                      //这里是加密，而不是调用解密方法Decrypt
 				plainBlock = xor(K[:BlockSize], inData[i*16:i*16+16]) //获取明文分组
 				copy(out[i*16:i*16+16], plainBlock)
 				continue
@@ -440,7 +445,6 @@ func Sm4OFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 		inData = in
 	}
 
-	iv := make([]byte, BlockSize)
 	out = make([]byte, len(inData))
 	c, err := NewCipher(key)
 	if err != nil {
@@ -454,7 +458,7 @@ func Sm4OFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 	if mode { //加密
 		for i := 0; i < len(inData)/16; i++ {
 			if i == 0 {
-				c.Encrypt(K, iv)
+				c.Encrypt(K, IV)
 				cipherBlock = xor(K[:BlockSize], inData[i*16:i*16+16])
 				copy(out[i*16:i*16+16], cipherBlock)
 				copy(shiftIV, K[:BlockSize])
@@ -469,7 +473,7 @@ func Sm4OFB(key []byte, in []byte, mode bool) (out []byte, err error) {
 	} else { //解密
 		for i := 0; i < len(inData)/16; i++ {
 			if i == 0 {
-				c.Encrypt(K, iv)                                      //这里是加密，而不是调用解密方法Decrypt
+				c.Encrypt(K, IV)                                      //这里是加密，而不是调用解密方法Decrypt
 				plainBlock = xor(K[:BlockSize], inData[i*16:i*16+16]) //获取明文分组
 				copy(out[i*16:i*16+16], plainBlock)
 				copy(shiftIV, K[:BlockSize])

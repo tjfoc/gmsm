@@ -4,10 +4,8 @@
 
 ```
 ├─certs        // 证书以及密钥
-├─cli          // HTTP客户端Demo
-│  ├─gm        // HTTP over GMSSL GET Demo
-│  └─std       // HTTP over TLS GET Demo
-└─svr          // HTTP服务端Demo
+├─websvr_test   //HTTP服务端/客户端测试Demo
+└─websvr          //协议自适应实现
 ```
 
 ## 服务端 GMTLS/TLS 工作逻辑
@@ -127,7 +125,7 @@ config := &gmtls.Config{
 }
 ```
 
-> 更多细节请参考： [HTTP over GMTLS/TLS Server Demo](./svr/main.go)
+> 更多细节请参考： [HTTP over GMTLS/TLS Server Demo](./websvr.go)
 
 
 ## 双向身份认证
@@ -148,7 +146,7 @@ config.ClientAuth = gmtls.RequireAndVerifyClientCert
 
 > 更多细节请参考：
 > 
-> - [自适应Web服务端 Demo svr/main.go #loadAutoSwitchConfigClientAuth](./svr/main.go)
+> - [自适应Web服务端 Demo websvr.go #loadAutoSwitchConfigClientAuth](./websvr.go)
 
 
 
@@ -167,5 +165,4 @@ config ,err = &gmtls.Config{
 
 > 更多细节请参考：
 >
-> - [国际算法标准 客户端 Demo cli/std/main.go #bothAuthConfig](./cli/std/main.go)
-> - [国密算法标准 客户端 Demo cli/gm/main.go #bothAuthConfig](./cli/gm/main.go)
+> - [国际算法标准 客户端 Demo websvr.go #bothAuthConfig](./websvr.go)
