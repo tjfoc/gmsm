@@ -169,14 +169,3 @@ func TestKEB2(t *testing.T) {
 		t.Error("hash verfication failed")
 	}
 }
-
-func Test_kdf(t *testing.T) {
-
-	buff := make([]byte, 8)
-	_, _ = rand.Read(buff)
-	klen := 64
-	K, _ := kdf(klen, buff)
-	fmt.Printf("klen: %d Z: %02X\n", klen, buff)
-	fmt.Printf("K: %02X\n", K)
-
-}
