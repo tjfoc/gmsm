@@ -239,12 +239,14 @@ func (hs *clientHandshakeStateGM) doFullHandshake() error {
 				opts.Roots.AddCert(rootca)
 			}
 			for i, cert := range certs {
-				c.verifiedChains, err = certs[i].Verify(opts)
-				if err != nil {
-					c.sendAlert(alertBadCertificate)
-					return err
-				}
+				// GM SSL 证书链中不含根证书 第1张为签名证书、第2张为加密证书，其他的证书都认为是根证书
 				if i == 0 || i == 1 {
+					// 只验证 签名证书  和 加密证书
+					c.verifiedChains, err = certs[i].Verify(opts)
+					if err != nil {
+						_ = c.sendAlert(alertBadCertificate)
+						return err
+					}
 					continue
 				}
 				opts.Intermediates.AddCert(cert)
