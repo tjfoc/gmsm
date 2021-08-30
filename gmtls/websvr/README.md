@@ -102,8 +102,8 @@ fncGetSignCertKeypair := func(info *gmtls.ClientHelloInfo) (*gmtls.Certificate, 
     // 检查支持协议中是否包含GMSSL
     for _, v := range info.SupportedVersions {
         if v == gmtls.VersionGMSSL {
-        gmFlag = true
-        break
+            gmFlag = true
+            break
         }
     }
     if gmFlag {

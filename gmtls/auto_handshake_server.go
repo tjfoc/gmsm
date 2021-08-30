@@ -51,7 +51,7 @@ func (c *Conn) serverHandshakeAutoSwitch() error {
 		return runServerHandshakeGM(c, hs, isResume)
 	case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
 		// SSL v3.0 - TLS 1.3
-		// 构造 国密SSL握手 状态上下文
+		// 构造 TLS 状态上下文
 		hs := &serverHandshakeState{
 			c:           c,
 			clientHello: clientHello,
@@ -61,7 +61,7 @@ func (c *Conn) serverHandshakeAutoSwitch() error {
 		if err != nil {
 			return err
 		}
-		// 运行 GMSSL 握手流程
+		// 运行 TLS 握手流程
 		return runServerHandshake(c, hs, isResume)
 	default:
 		_ = c.sendAlert(alertProtocolVersion)
