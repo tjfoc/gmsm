@@ -1,5 +1,18 @@
 # TLS/GMSSL 服务端协议自适应
 
+<!-- TOC -->
+
+- [TLS/GMSSL 服务端协议自适应](#tlsgmssl-服务端协议自适应)
+    - [服务端 GMSSL/TLS 工作逻辑](#服务端-gmssltls-工作逻辑)
+    - [GMSSL/TLS 自动切换模式](#gmssltls-自动切换模式)
+    - [双向身份认证](#双向身份认证)
+    - [国密HTTPS客户端](#国密https客户端)
+        - [单向身份认证 快速入门](#单向身份认证-快速入门)
+        - [双向身份认证 快速入门](#双向身份认证-快速入门)
+
+<!-- /TOC -->
+
+
 目录结构说明:
 
 ```
@@ -8,7 +21,7 @@
 └─websvr          //协议自适应实现
 ```
 
-## 服务端 GMTLS/TLS 工作逻辑
+## 服务端 GMSSL/TLS 工作逻辑
 
 ![autoswitchlogic](./img/autoswitchlogic.png)
 
@@ -166,3 +179,97 @@ config ,err = &gmtls.Config{
 > 更多细节请参考：
 >
 > - [国际算法标准 客户端 Demo websvr.go #bothAuthConfig](./websvr.go)
+
+
+## 国密HTTPS客户端
+
+为了简化HTTPS客户端的构造`gmtls`包提供下面构造方法：
+
+- 创建单向身份认证HTTPS客户端：`gmtls.NewHTTPSClient(*x509.CertPool)` 
+- 创建双向身份认证HTTPS客户端：`gmtls.NewAuthHTTPSClient(*x509.CertPool, *gmtls.Certificate)`
+- 创建定制化的TLS连接的HTTPS客户端：`gmtls.NewCustomHTTPSClient(*gmtls.Config)`
+
+### 单向身份认证 快速入门
+
+单向身份认证客户端，只只验证服务器证书有效性，服务端不对客户端进行身份认证。
+
+该模式下进行国密HTTPS的调用你需要：
+
+1. 提供根证书链。
+2. 构造HTTP客户端。
+3. 调用API访问HTTPS。
+
+```go
+package main
+
+import (
+	"github.com/tjfoc/gmsm/gmtls"
+	"github.com/tjfoc/gmsm/x509"
+	"io/ioutil"
+)
+
+func main() {
+	// 1. 提供根证书链
+	certPool := x509.NewCertPool()
+	cacert, err := ioutil.ReadFile("websvr/certs/SM2_CA.cer")
+	if err != nil {
+		panic(err)
+	}
+	certPool.AppendCertsFromPEM(cacert)
+	// 2. 构造HTTP客户端
+	httpClient := gmtls.NewHTTPSClient(certPool)
+	// 3. 调用API访问HTTPS
+	response, err := httpClient.Get("https://localhost:443")
+	if err != nil {
+		panic(err)
+	}
+	defer response.Body.Close()
+	// TODO: 使用 response 做你需要的事情...
+}
+```
+
+更多细节见 [gmsm/http_client_test.go#TestNewHTTPSClient2](../http_client_test.go)
+
+### 双向身份认证 快速入门
+
+双向身份认证，在服务端开启了对客户端的身份认证情况下，国密SSL通行就需要进行双向身份认证。
+
+该模式下进行国密HTTPS的调用你需要：
+
+1. 提供根证书链。
+2. 提供客户端认证证书、密钥对。
+3. 构造HTTP客户端。
+4. 调用API访问HTTPS。
+
+```go
+package main
+
+import (
+	"github.com/tjfoc/gmsm/gmtls"
+	"github.com/tjfoc/gmsm/x509"
+	"io/ioutil"
+)
+
+func main() {
+	// 1. 提供根证书链
+	certPool := x509.NewCertPool()
+	cacert, err := ioutil.ReadFile("websvr/certs/SM2_CA.cer")
+	if err != nil {
+		panic(err)
+	}
+	certPool.AppendCertsFromPEM(cacert)
+	// 2. 提供客户端认证证书、密钥对。
+	clientAuthCert, err := gmtls.LoadX509KeyPair("websvr/certs/sm2_auth_cert.cer", "websvr/certs/sm2_auth_key.pem")
+	// 3. 构造HTTP客户端。
+	httpClient := gmtls.NewAuthHTTPSClient(certPool, &clientAuthCert)
+	// 4. 调用API访问HTTPS。
+	response, err := httpClient.Get("https://localhost:443")
+	if err != nil {
+		panic(err)
+	}
+	defer response.Body.Close()
+	// TODO: 使用 response 做你需要的事情...
+}
+```
+
+更多细节见 [gmsm/http_client_test.go#TestSimpleNewAuthHTTPSClient](../http_client_test.go)

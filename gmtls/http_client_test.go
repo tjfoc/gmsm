@@ -31,7 +31,7 @@ func bootGMHTTPSServer(t *testing.T) {
 		"websvr/certs/sm2_sign_cert.cer",
 		"websvr/certs/sm2_sign_key.pem")
 	if err != nil {
-
+		t.Fatal(err)
 	}
 	encCert, err := LoadX509KeyPair(
 		"websvr/certs/sm2_enc_cert.cer",
@@ -64,15 +64,54 @@ func bootGMHTTPSServer(t *testing.T) {
 	}
 }
 
+// 启动GM HTTPS测试服务器 双向身份认证
+func bootGMAuthHTTPSServer(t *testing.T) {
+	sigCert, err := LoadX509KeyPair(
+		"websvr/certs/sm2_sign_cert.cer",
+		"websvr/certs/sm2_sign_key.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	encCert, err := LoadX509KeyPair(
+		"websvr/certs/sm2_enc_cert.cer",
+		"websvr/certs/sm2_enc_key.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := &Config{
+		GMSupport:    &GMSupport{},
+		Certificates: []Certificate{sigCert, encCert},
+		ClientAuth:   RequireAndVerifyClientCert,
+	}
+	if err != nil {
+		panic(err)
+	}
+
+	ln, err := Listen("tcp", ":50055", config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = writer.Write(_ExpectRawContent)
+	})
+	fmt.Println(">> HTTP :50055 [GMSSL] Client Auth running...")
+	err = http.Serve(ln, serveMux)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // HTTP 客户端连接测试
-func TestSimpleRoundTripper_RoundTrip1(t *testing.T) {
+func TestSimpleNewHTTPSClient1(t *testing.T) {
 	go bootHttpServer(t)
 	//go bootGMHTTPSServer(t)
 	/*
 		HTTP 连接测试
 	*/
 	time.Sleep(time.Second)
-	httpClient := http.Client{Transport: NewSimpleRoundTripper(nil)}
+	httpClient := NewHTTPSClient(nil)
 	response, err := httpClient.Get("http://localhost:50053")
 	if err != nil {
 		t.Fatal(err)
@@ -88,10 +127,10 @@ func TestSimpleRoundTripper_RoundTrip1(t *testing.T) {
 }
 
 // GM HTTPS 客户端连接测试
-func TestSimpleRoundTripper_RoundTrip2(t *testing.T) {
+func TestNewHTTPSClient2(t *testing.T) {
 	go bootGMHTTPSServer(t)
 	/*
-		GM HTTP 连接测试
+		GM HTTPS 连接测试
 	*/
 	time.Sleep(time.Second)
 	// 信任的根证书
@@ -101,11 +140,39 @@ func TestSimpleRoundTripper_RoundTrip2(t *testing.T) {
 		t.Fatal(err)
 	}
 	certPool.AppendCertsFromPEM(cacert)
-	httpClient := http.Client{Transport: NewSimpleRoundTripper(&Config{
-		GMSupport: &GMSupport{},
-		RootCAs:   certPool,
-	})}
+	httpClient := NewHTTPSClient(certPool)
 	response, err := httpClient.Get("https://localhost:50054")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	raw, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(raw, _ExpectRawContent) {
+		t.Fatalf(">> GM HTTPS响应内容与期待内容不符, expect %s, actual: %s", string(_ExpectRawContent), string(raw))
+	}
+}
+
+// GM HTTPS 客户端连接测试 双向身份认证
+func TestSimpleNewAuthHTTPSClient(t *testing.T) {
+	go bootGMAuthHTTPSServer(t)
+	/*
+		GM HTTPS 双向身份认证
+	*/
+	time.Sleep(time.Second)
+	// 信任的根证书
+	certPool := x509.NewCertPool()
+	cacert, err := ioutil.ReadFile("websvr/certs/SM2_CA.cer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	certPool.AppendCertsFromPEM(cacert)
+	// 客户端认证密钥对
+	clientAuthCert, err := LoadX509KeyPair("websvr/certs/sm2_auth_cert.cer", "websvr/certs/sm2_auth_key.pem")
+	httpClient := NewAuthHTTPSClient(certPool, clientAuthCert)
+	response, err := httpClient.Get("https://localhost:50055")
 	if err != nil {
 		t.Fatal(err)
 	}
