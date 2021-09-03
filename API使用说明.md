@@ -1,11 +1,28 @@
 # 国密GM/T Go API使用说明
 
+<!-- TOC -->
+
+- [国密GM/T Go API使用说明](#国密gmt-go-api使用说明)
+    - [Go包安装](#go包安装)
+    - [SM2椭圆曲线公钥密码算法](#sm2椭圆曲线公钥密码算法)
+        - [代码示例](#代码示例)
+    - [SM3密码杂凑算法](#sm3密码杂凑算法)
+        - [代码示例](#代码示例-1)
+    - [SM4分组密码算法](#sm4分组密码算法)
+        - [代码示例](#代码示例-2)
+    - [相关代码示例参考](#相关代码示例参考)
+    - [国密SSL（TLCP）](#国密ssltlcp)
+
+<!-- /TOC -->
+
 ## Go包安装
 
 ```bash
 go get -u github.com/tjfoc/gmsm
 ```
-## SM2椭圆曲线公钥密码算法 - Public key cryptographic algorithm SM2 based on elliptic curves
+## SM2椭圆曲线公钥密码算法
+
+>   SM2椭圆曲线公钥密码算法 Public key cryptographic algorithm SM2 based on elliptic curves
 
 - 遵循的SM2标准号为： GM/T 0003.1-2012、GM/T 0003.2-2012、GM/T 0003.3-2012、GM/T 0003.4-2012、GM/T 0003.5-2012、GM/T 0009-2012、GM/T 0010-2012
 - go package： `github.com/tjfoc/gmsm/sm2`
@@ -39,7 +56,10 @@ go get -u github.com/tjfoc/gmsm
     isok := pub.Verify(msg, sign)    //sm2验签
     fmt.Printf("Verified: %v\n", isok)
 ```
-## SM3密码杂凑算法 - SM3 cryptographic hash algorithm
+## SM3密码杂凑算法
+
+> SM3密码杂凑算法 - SM3 cryptographic hash algorithm
+
 - 遵循的SM3标准号为： GM/T 0004-2012
 - g package：`github.com/tjfoc/gmsm/sm3`
 - `type SM3 struct` 是原生接口hash.Hash的一个实现
@@ -54,7 +74,9 @@ go get -u github.com/tjfoc/gmsm
     fmt.Printf("digest value is: %x\n",sum)
 ```
 
-## SM4分组密码算法 - SM4 block cipher algorithm
+## SM4分组密码算法
+
+> SM4分组密码算法 - SM4 block cipher algorithm
 
 - 遵循的SM4标准号为:  GM/T 0002-2012
 - go package：`github.com/tjfoc/gmsm/sm4`
@@ -90,15 +112,21 @@ go get -u github.com/tjfoc/gmsm
 ```
 
 
+## 相关代码示例参考
 
+- [SM2算法 sm2/sm2_test.go](sm2/sm2_test.go)
+- [SM3算法 sm3/sm3_test.go](sm3/sm3_test.go)
+- [SM4算法 sm4/sm4_test.go](sm4/sm4_test.go)
+- [x509国密证书 x509/x509_test.go](x509/x509_test.go)
 
+## 国密SSL（TLCP）
 
-### 具体功能测试代码参考
-```Go
-github.com/tjfoc/gmsm/sm2/sm2_test.go  //sm2算法
-github.com/tjfoc/gmsm/sm3/sm3_test.go  //sm3算法
-github.com/tjfoc/gmsm/sm4/sm4_test.go  //sm4算法
-github.com/tjfoc/gmsm/x509/x509_test.go //x509国密证书
-github.com/tjfoc/gmsm/gmtls/gmcredentials/credentials_test.go  //国密tls
-github.com/tjfoc/gmsm/gmtls/gmcredentials/websvr/websvr.go     //国密tls与非国密TLS自适应
-```
+- 国密SSL协议遵循标准：《GM/T 0024-2014 SSL VPN技术规范》
+- **国密SSL协议目前升级为TLCP协议，遵循《GBT 38636-2020 信息安全技术 传输层密码协议》**，新增了SM4的GCM加密模式。
+
+国密SSL使用详情见文档： [《tjfoc 国密SSL协议快速入门》](gmtls/websvr/README.md)
+
+示例入口：
+
+- [国密HTTPS Web服务器测试用例 gmtls/websvr/websvr.go](gmtls/websvr/websvr.go)
+- [国密TLS GRPC测试用例 gmtls/websvr/credentials_test.go](gmtls/gmcredentials/credentials_test.go)
