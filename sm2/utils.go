@@ -20,7 +20,7 @@ func Decompress(a []byte) *PublicKey {
 
 	y2 := sm2P256ToBig(&xx3)
 	y := new(big.Int).ModSqrt(y2, sm2P256.P)
-	if getLastBit(y)!= uint(a[0]) {
+	if getLastBit(y) != uint(a[0]) {
 		y.Sub(sm2P256.P, y)
 	}
 	return &PublicKey{
@@ -41,7 +41,9 @@ func Compress(a *PublicKey) []byte {
 	return buf
 }
 
-
+type sm2Signature struct {
+	R, S *big.Int
+}
 
 func SignDigitToSignData(r, s *big.Int) ([]byte, error) {
 	return asn1.Marshal(sm2Signature{r, s})
@@ -56,4 +58,3 @@ func SignDataToSignDigit(sign []byte) (*big.Int, *big.Int, error) {
 	}
 	return sm2Sign.R, sm2Sign.S, nil
 }
-
