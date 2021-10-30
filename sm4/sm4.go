@@ -274,6 +274,9 @@ func pkcs7Padding(src []byte) []byte {
 
 func pkcs7UnPadding(src []byte) ([]byte, error) {
 	length := len(src)
+	if length == 0 {
+		return nil, errors.New("Invalid pkcs7 padding (len(padtext) == 0)")
+	}
 	unpadding := int(src[length-1])
 	if unpadding > BlockSize || unpadding == 0 {
 		return nil, errors.New("Invalid pkcs7 padding (unpadding > BlockSize || unpadding == 0)")
