@@ -291,7 +291,7 @@ GCM模式下：
 
 如何使用？
 
-- 目前客户端和服务单均支持 `ECC_SM4_GCM_SM3` 与 `ECC_SM4_CBC_SM3` 密码套件。
+- 目前客户端和服务端均支持 `ECC_SM4_GCM_SM3` 与 `ECC_SM4_CBC_SM3` 密码套件。
 - 服务端：无需而外配置。
 - 客户端：目前客户单默认使用`ECC_SM4_CBC_SM3`密码套件，需要手动配置才可以使用 `ECC_SM4_GCM_SM3`套件。
 
@@ -350,7 +350,7 @@ func main() {
       <----  隐式随机数  ---> <------------ 显式部分 ------------>
 ```
 
-- 隐式随机数为： 工作密钥中的客户端写IV(`client_write_IV `)和服务端写IV(`server_write_IV`)。
+- 隐式随机数为： 工作密钥中的 客户端写IV(`client_write_IV `) 或 服务端写IV(`server_write_IV`)。
 - 显式部分为： 数据包序号(`seq_num`)，也就是`GenericAEADCipher.nonce_explicit`字段。
 
 > 详见 RFC 5116 3.2.  Recommended Nonce Formation
