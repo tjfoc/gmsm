@@ -1,13 +1,14 @@
 package websvr
+
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/tjfoc/gmsm/x509"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"testing"
 	"time"
-	"github.com/tjfoc/gmsm/x509"
 
 	"github.com/tjfoc/gmsm/gmtls"
 )
@@ -15,16 +16,15 @@ import (
 const (
 	// rsaCertPath = "certs/rsa_sign.cer"
 	// rsaKeyPath  = "certs/rsa_sign_key.pem"
-    rsaCacertPath="certs/rsa_CA.cer"
+	rsaCacertPath = "certs/rsa_CA.cer"
 	// sm2SignCertPath = "certs/sm2_sign_cert.cer"
 	// sm2SignKeyPath  = "certs/sm2_sign_key.pem"
 	// sm2EncCertPath  = "certs/sm2_enc_cert.cer"
 	// sm2EncKeyPath   = "certs/sm2_enc_key.pem"
 	// SM2CaCertPath   = "certs/SM2_CA.cer"
-	sm2UserCertPath ="certs/sm2_auth_cert.cer"
-	sm2UserKeyPath= "certs/sm2_auth_key.pem"
+	sm2UserCertPath = "certs/sm2_auth_cert.cer"
+	sm2UserKeyPath  = "certs/sm2_auth_key.pem"
 )
-
 
 func ServerRun() {
 	//config, err := loadRsaConfig()
@@ -76,9 +76,10 @@ func ClientRun() {
 			fmt.Printf("%s", buff[0:n])
 		}
 	}
-	fmt.Println()
+	fmt.Println(">> RSA TLS [PASS]")
 	end <- true
 }
+
 func gmClientRun() {
 
 	// 信任的根证书
@@ -91,8 +92,8 @@ func gmClientRun() {
 	cert, err := gmtls.LoadX509KeyPair(sm2UserCertPath, sm2UserKeyPath)
 
 	config := &gmtls.Config{
-		GMSupport: &gmtls.GMSupport{},
-		RootCAs:   certPool,
+		GMSupport:    &gmtls.GMSupport{},
+		RootCAs:      certPool,
 		Certificates: []gmtls.Certificate{cert},
 	}
 
@@ -115,7 +116,48 @@ func gmClientRun() {
 			fmt.Printf("%s", buff[0:n])
 		}
 	}
-	fmt.Println()
+	fmt.Println(">> SM2_SM4_CBC_SM3 suite [PASS]")
+	end <- true
+}
+
+func gmGCMClientRun() {
+
+	// 信任的根证书
+	certPool := x509.NewCertPool()
+	cacert, err := ioutil.ReadFile(SM2CaCertPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	certPool.AppendCertsFromPEM(cacert)
+	cert, err := gmtls.LoadX509KeyPair(sm2UserCertPath, sm2UserKeyPath)
+
+	config := &gmtls.Config{
+		GMSupport:    &gmtls.GMSupport{},
+		RootCAs:      certPool,
+		Certificates: []gmtls.Certificate{cert},
+		CipherSuites: []uint16{gmtls.GMTLS_SM2_WITH_SM4_GCM_SM3},
+	}
+
+	conn, err := gmtls.Dial("tcp", "localhost:50052", config)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	req := []byte("GET / HTTP/1.1\r\n" +
+		"Host: localhost\r\n" +
+		"Connection: close\r\n\r\n")
+	_, _ = conn.Write(req)
+	buff := make([]byte, 1024)
+	for {
+		n, _ := conn.Read(buff)
+		if n <= 0 {
+			break
+		} else {
+			fmt.Printf("%s", buff[0:n])
+		}
+	}
+	fmt.Println(">> SM2_SM4_GCM_SM3 suite [PASS]")
 	end <- true
 }
 
@@ -124,9 +166,12 @@ var end chan bool
 func Test_tls(t *testing.T) {
 	end = make(chan bool, 64)
 	go ServerRun()
-	time.Sleep(1000000)
+	time.Sleep(time.Second)
 	go ClientRun()
 	<-end
 	go gmClientRun()
 	<-end
+	go gmGCMClientRun()
+	<-end
+
 }
