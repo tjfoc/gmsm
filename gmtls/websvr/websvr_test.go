@@ -51,6 +51,7 @@ func ServerRun() {
 		panic(err)
 	}
 }
+
 func ClientRun() {
 	var config = tls.Config{
 		MaxVersion:         gmtls.VersionTLS12,
@@ -120,6 +121,7 @@ func gmClientRun() {
 	end <- true
 }
 
+// gmGCMClientRun GCM模式测试
 func gmGCMClientRun() {
 
 	// 信任的根证书
@@ -135,7 +137,7 @@ func gmGCMClientRun() {
 		GMSupport:    &gmtls.GMSupport{},
 		RootCAs:      certPool,
 		Certificates: []gmtls.Certificate{cert},
-		CipherSuites: []uint16{gmtls.GMTLS_SM2_WITH_SM4_GCM_SM3},
+		CipherSuites: []uint16{gmtls.GMTLS_ECC_SM4_GCM_SM3},
 	}
 
 	conn, err := gmtls.Dial("tcp", "localhost:50052", config)

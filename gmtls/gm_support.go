@@ -111,8 +111,11 @@ const (
 	GMTLS_RSA_WITH_SM1_SM3       uint16 = 0xe009
 	GMTLS_RSA_WITH_SM1_SHA1      uint16 = 0xe00a
 	GMTLS_ECDHE_SM2_WITH_SM4_SM3 uint16 = 0xe011
+	GMTLS_ECDHE_SM4_CBC_SM3      uint16 = 0xe011
+	GMTLS_ECDHE_SM4_GCM_SM3      uint16 = 0xe051
 	GMTLS_SM2_WITH_SM4_SM3       uint16 = 0xe013
-	GMTLS_SM2_WITH_SM4_GCM_SM3   uint16 = 0xe053
+	GMTLS_ECC_SM4_CBC_SM3        uint16 = 0xe013
+	GMTLS_ECC_SM4_GCM_SM3        uint16 = 0xe053
 	GMTLS_IBSDH_WITH_SM4_SM3     uint16 = 0xe015
 	GMTLS_IBC_WITH_SM4_SM3       uint16 = 0xe017
 	GMTLS_RSA_WITH_SM4_SM3       uint16 = 0xe019
@@ -120,9 +123,11 @@ const (
 )
 
 var gmCipherSuites = []*cipherSuite{
-	{GMTLS_SM2_WITH_SM4_SM3, 16, 32, 16, eccGMKA, suiteECDSA, cipherSM4, macSM3, nil},
-	{GMTLS_ECDHE_SM2_WITH_SM4_SM3, 16, 32, 16, ecdheGMKA, suiteECDHE | suiteECDSA, cipherSM4, macSM3, nil},
-	{GMTLS_SM2_WITH_SM4_GCM_SM3, 16, 0, 4, eccGMKA, suiteECDSA, nil, nil, aeadSM4GCM},
+	{GMTLS_ECC_SM4_CBC_SM3, 16, 32, 16, eccGMKA, suiteECDSA, cipherSM4, macSM3, nil},
+	{GMTLS_ECC_SM4_GCM_SM3, 16, 0, 4, eccGMKA, suiteECDSA, nil, nil, aeadSM4GCM},
+
+	{GMTLS_ECDHE_SM4_CBC_SM3, 16, 32, 16, ecdheGMKA, suiteECDHE | suiteECDSA, cipherSM4, macSM3, nil},
+	{GMTLS_ECDHE_SM4_GCM_SM3, 16, 0, 4, ecdheGMKA, suiteECDHE | suiteECDSA, nil, nil, aeadSM4GCM},
 }
 
 // aeadSM4GCM SM4 GCM向前加解密函数
@@ -152,7 +157,12 @@ func aeadSM4GCM(key []byte, nonce []byte) cipher.AEAD {
 func getCipherSuites(c *Config) []uint16 {
 	s := c.CipherSuites
 	if s == nil {
-		s = []uint16{GMTLS_SM2_WITH_SM4_SM3, GMTLS_SM2_WITH_SM4_GCM_SM3, GMTLS_ECDHE_SM2_WITH_SM4_SM3}
+		s = []uint16{
+			GMTLS_ECC_SM4_CBC_SM3,
+			GMTLS_ECC_SM4_GCM_SM3,
+			GMTLS_ECDHE_SM4_CBC_SM3,
+			GMTLS_ECDHE_SM4_GCM_SM3,
+		}
 	}
 	return s
 }
