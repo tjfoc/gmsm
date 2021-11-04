@@ -22,6 +22,7 @@ import (
 )
 
 const VersionGMSSL = 0x0101 // GM/T 0024-2014
+const noncePrefixLength = 4 // RFC 5116 & RFC 5288
 
 var pemCAs = []struct {
 	name string
@@ -110,7 +111,11 @@ const (
 	GMTLS_RSA_WITH_SM1_SM3       uint16 = 0xe009
 	GMTLS_RSA_WITH_SM1_SHA1      uint16 = 0xe00a
 	GMTLS_ECDHE_SM2_WITH_SM4_SM3 uint16 = 0xe011
+	GMTLS_ECDHE_SM4_CBC_SM3      uint16 = 0xe011
+	GMTLS_ECDHE_SM4_GCM_SM3      uint16 = 0xe051
 	GMTLS_SM2_WITH_SM4_SM3       uint16 = 0xe013
+	GMTLS_ECC_SM4_CBC_SM3        uint16 = 0xe013
+	GMTLS_ECC_SM4_GCM_SM3        uint16 = 0xe053
 	GMTLS_IBSDH_WITH_SM4_SM3     uint16 = 0xe015
 	GMTLS_IBC_WITH_SM4_SM3       uint16 = 0xe017
 	GMTLS_RSA_WITH_SM4_SM3       uint16 = 0xe019
@@ -118,14 +123,46 @@ const (
 )
 
 var gmCipherSuites = []*cipherSuite{
-	{GMTLS_SM2_WITH_SM4_SM3, 16, 32, 16, eccGMKA, suiteECDSA, cipherSM4, macSM3, nil},
-	{GMTLS_ECDHE_SM2_WITH_SM4_SM3, 16, 32, 16, ecdheGMKA, suiteECDHE | suiteECDSA, cipherSM4, macSM3, nil},
+	{GMTLS_ECC_SM4_CBC_SM3, 16, 32, 16, eccGMKA, suiteECDSA, cipherSM4, macSM3, nil},
+	{GMTLS_ECC_SM4_GCM_SM3, 16, 0, 4, eccGMKA, suiteECDSA, nil, nil, aeadSM4GCM},
+
+	{GMTLS_ECDHE_SM4_CBC_SM3, 16, 32, 16, ecdheGMKA, suiteECDHE | suiteECDSA, cipherSM4, macSM3, nil},
+	{GMTLS_ECDHE_SM4_GCM_SM3, 16, 0, 4, ecdheGMKA, suiteECDHE | suiteECDSA, nil, nil, aeadSM4GCM},
+}
+
+// aeadSM4GCM SM4 GCM向前加解密函数
+// key: 对称密钥
+// nonce: 隐式随机数 (implicit nonce 4 Byte)
+func aeadSM4GCM(key []byte, nonce []byte) cipher.AEAD {
+	if len(nonce) != noncePrefixLength {
+		panic("tls: internal error: wrong implicit nonce length")
+	}
+	block, err := sm4.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+	aead, err := cipher.NewGCMWithNonceSize(block, 12)
+	if err != nil {
+		panic(err)
+	}
+	// AEAD 使用的随机数应由显式和隐式两部分构成，
+	// 显式部分即 nonce explicit，客户端和服务端使用隐式部分
+	// 分别来自 client_write_iv 和 server_write_iv。
+	// AEAD使用的随机数和计数器的构造参见 RFC 5116
+	ret := &fixedNonceAEAD{aead: aead}
+	copy(ret.nonce[:], nonce)
+	return ret
 }
 
 func getCipherSuites(c *Config) []uint16 {
 	s := c.CipherSuites
 	if s == nil {
-		s = []uint16{GMTLS_SM2_WITH_SM4_SM3, GMTLS_ECDHE_SM2_WITH_SM4_SM3}
+		s = []uint16{
+			GMTLS_ECC_SM4_CBC_SM3,
+			GMTLS_ECC_SM4_GCM_SM3,
+			GMTLS_ECDHE_SM4_CBC_SM3,
+			GMTLS_ECDHE_SM4_GCM_SM3,
+		}
 	}
 	return s
 }
@@ -167,7 +204,6 @@ func (nilMD5Hash) BlockSize() int {
 
 func newFinishedHashGM(cipherSuite *cipherSuite) finishedHash {
 	return finishedHash{sm3.New(), sm3.New(), new(nilMD5Hash), new(nilMD5Hash), []byte{}, VersionGMSSL, prf12(sm3.New)}
-
 }
 
 func ecdheGMKA(version uint16) keyAgreement {
