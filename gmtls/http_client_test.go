@@ -3,11 +3,12 @@ package gmtls
 import (
 	"bytes"
 	"fmt"
-	"github.com/tjfoc/gmsm/x509"
 	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/tjfoc/gmsm/x509"
 )
 
 var _ExpectRawContent = []byte("Hello World!")
@@ -78,10 +79,19 @@ func bootGMAuthHTTPSServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	certPool := x509.NewCertPool()
+	cacert, err := ioutil.ReadFile("websvr/certs/SM2_CA.cer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	certPool.AppendCertsFromPEM(cacert)
+
 	config := &Config{
 		GMSupport:    &GMSupport{},
 		Certificates: []Certificate{sigCert, encCert},
 		ClientAuth:   RequireAndVerifyClientCert,
+		ClientCAs:    certPool,
 	}
 	if err != nil {
 		panic(err)
@@ -111,7 +121,7 @@ func TestSimpleNewHTTPSClient1(t *testing.T) {
 		HTTP 连接测试
 	*/
 	time.Sleep(time.Second)
-	httpClient := NewHTTPSClient(nil)
+	httpClient := NewCustomHTTPSClient(nil)
 	response, err := httpClient.Get("http://localhost:50053")
 	if err != nil {
 		t.Fatal(err)
@@ -134,13 +144,12 @@ func TestNewHTTPSClient2(t *testing.T) {
 	*/
 	time.Sleep(time.Second)
 	// 信任的根证书
-	certPool := x509.NewCertPool()
-	cacert, err := ioutil.ReadFile("websvr/certs/SM2_CA.cer")
+
+	config, err := createClientGMTLSConfig("", "", []string{"websvr/certs/SM2_CA.cer"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	certPool.AppendCertsFromPEM(cacert)
-	httpClient := NewHTTPSClient(certPool)
+	httpClient := NewCustomHTTPSClient(config)
 	response, err := httpClient.Get("https://localhost:50054")
 	if err != nil {
 		t.Fatal(err)
@@ -156,22 +165,19 @@ func TestNewHTTPSClient2(t *testing.T) {
 }
 
 // GM HTTPS 客户端连接测试 双向身份认证
-func TestSimpleNewAuthHTTPSClient(t *testing.T) {
+func TestNewHTTPSClient3(t *testing.T) {
 	go bootGMAuthHTTPSServer(t)
 	/*
 		GM HTTPS 双向身份认证
 	*/
 	time.Sleep(time.Second)
-	// 信任的根证书
-	certPool := x509.NewCertPool()
-	cacert, err := ioutil.ReadFile("websvr/certs/SM2_CA.cer")
+
+	config, err := createClientGMTLSConfig("websvr/certs/sm2_auth_key.pem", "websvr/certs/sm2_auth_cert.cer", []string{"websvr/certs/SM2_CA.cer"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	certPool.AppendCertsFromPEM(cacert)
-	// 客户端认证密钥对
-	clientAuthCert, err := LoadX509KeyPair("websvr/certs/sm2_auth_cert.cer", "websvr/certs/sm2_auth_key.pem")
-	httpClient := NewAuthHTTPSClient(certPool, clientAuthCert)
+	httpClient := NewCustomHTTPSClient(config)
+
 	response, err := httpClient.Get("https://localhost:50055")
 	if err != nil {
 		t.Fatal(err)
@@ -184,4 +190,47 @@ func TestSimpleNewAuthHTTPSClient(t *testing.T) {
 	if !bytes.Equal(raw, _ExpectRawContent) {
 		t.Fatalf(">> GM HTTPS响应内容与期待内容不符, expect %s, actual: %s", string(_ExpectRawContent), string(raw))
 	}
+}
+
+func createClientGMTLSConfig(keyPath string, certPath string, caPaths []string) (*Config, error) {
+
+	cfg := &Config{
+		GMSupport: &GMSupport{},
+	}
+	cfg.Certificates = []Certificate{}
+	if keyPath != "" && certPath != "" {
+		cert, err := LoadX509KeyPair(certPath, keyPath)
+		if err != nil {
+			return nil, fmt.Errorf("load gm X509 keyPair error: %v", err)
+		}
+		cfg.Certificates = append(cfg.Certificates, cert)
+	}
+
+	var pool *x509.CertPool = nil
+	if len(caPaths) > 0 {
+		pool = x509.NewCertPool()
+		for _, certPath := range caPaths {
+			caCrt, err := ioutil.ReadFile(certPath)
+			if err != nil {
+				return nil, err
+			}
+			ok := pool.AppendCertsFromPEM(caCrt)
+			if !ok {
+				return nil, fmt.Errorf("append cert to pool fail at %s", certPath)
+			}
+		}
+	}
+
+	cfg.MinVersion = VersionGMSSL
+	cfg.MaxVersion = VersionTLS12
+
+	cfg.PreferServerCipherSuites = true
+	// cfg.CipherSuites use default value []uint16{GMTLS_SM2_WITH_SM4_SM3, GMTLS_ECDHE_SM2_WITH_SM4_SM3}
+
+	cfg.RootCAs = pool
+	// cfg.ServerName = "localhost"
+	cfg.InsecureSkipVerify = false
+
+	return cfg, nil
+
 }
