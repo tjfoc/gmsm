@@ -5,10 +5,13 @@
 - [TLS/GMSSL 服务端协议自适应](#tlsgmssl-服务端协议自适应)
     - [服务端 GMSSL/TLS 工作逻辑](#服务端-gmssltls-工作逻辑)
     - [GMSSL/TLS 自动切换模式](#gmssltls-自动切换模式)
-    - [双向身份认证](#双向身份认证)
+    - [TCLP 双向身份认证](#tclp-双向身份认证)
     - [国密HTTPS客户端](#国密https客户端)
-        - [单向身份认证 快速入门](#单向身份认证-快速入门)
-        - [双向身份认证 快速入门](#双向身份认证-快速入门)
+        - [HTTPS 单向身份认证](#https-单向身份认证)
+        - [HTTPS 双向身份认证](#https-双向身份认证)
+    - [TLCP GCM模式](#tlcp-gcm模式)
+        - [客户端 GCM配置](#客户端-gcm配置)
+        - [关于 TLCP AEAD随机数](#关于-tlcp-aead随机数)
 
 <!-- /TOC -->
 
@@ -141,7 +144,7 @@ config := &gmtls.Config{
 > 更多细节请参考： [HTTP over GMTLS/TLS Server Demo](./websvr.go)
 
 
-## 双向身份认证
+## TCLP 双向身份认证
 
 服务端开启双向身份认证，需要配置而外参数`ClientAuth`。
 
@@ -189,7 +192,7 @@ config ,err = &gmtls.Config{
 - 创建双向身份认证HTTPS客户端：`gmtls.NewAuthHTTPSClient(*x509.CertPool, *gmtls.Certificate)`
 - 创建定制化的TLS连接的HTTPS客户端：`gmtls.NewCustomHTTPSClient(*gmtls.Config)`
 
-### 单向身份认证 快速入门
+### HTTPS 单向身份认证
 
 单向身份认证客户端，只只验证服务器证书有效性，服务端不对客户端进行身份认证。
 
@@ -230,7 +233,7 @@ func main() {
 
 更多细节见 [gmsm/http_client_test.go#TestNewHTTPSClient2](../http_client_test.go)
 
-### 双向身份认证 快速入门
+### HTTPS 双向身份认证
 
 双向身份认证，在服务端开启了对客户端的身份认证情况下，国密SSL通行就需要进行双向身份认证。
 
@@ -273,3 +276,91 @@ func main() {
 ```
 
 更多细节见 [gmsm/http_client_test.go#TestSimpleNewAuthHTTPSClient](../http_client_test.go)
+
+## TLCP GCM模式
+
+《GBT 38636-2020 信息安全技术 传输层密码协议（TLCP）》协议中增加了GCM可鉴别加密模式相关的系列密码套件。
+
+以`ECC_SM4_GCM_SM3` 密码套件为例，该套件使用SM4算法GCM可鉴别加密模式，替换了“SM4 CBC模式 + SM3 HMAC”，其余保持不变。
+
+GCM模式下：
+
+- 密文数据结构和生成规则详见: 《GBT 38636-2020》 6.3.3.4.4 认证加密算法的数据处理
+- 实现随机数实现细节见：RFC 5116 (AES_GCM 参考 RFC 5288)
+
+
+如何使用？
+
+- 目前客户端和服务端均支持 `ECC_SM4_GCM_SM3` 与 `ECC_SM4_CBC_SM3` 密码套件。
+- 服务端：无需而外配置。
+- 客户端：目前客户单默认使用`ECC_SM4_CBC_SM3`密码套件，需要手动配置才可以使用 `ECC_SM4_GCM_SM3`套件。
+
+目前支持TLCP密码套件：
+
+- `ECC_SM4_GCM_SM3`
+- `ECC_SM4_CBC_SM3`
+- `ECDHE_SM4_CBC_SM3`
+- `ECDHE_SM4_GCM_SM3`
+
+### 客户端 GCM配置
+
+以单向身份认证举例，只需要在连接配置中增加响应的算法，将GCM模式套件放在数组较前面的位置就可以。
+
+示例如下：
+
+```go
+package main
+
+import (
+	"github.com/tjfoc/gmsm/gmtls"
+	"github.com/tjfoc/gmsm/x509"
+	"io/ioutil"
+	"log"
+)
+
+func main() {
+	// 信任的根证书
+	certPool := x509.NewCertPool()
+	cacert, err := ioutil.ReadFile("root.cer")
+	if err != nil {
+		log.Fatal(err)
+	}
+	certPool.AppendCertsFromPEM(cacert)
+	cert, err := gmtls.LoadX509KeyPair("sm2_cli.cer", "sm2_cli.pem")
+
+	config := &gmtls.Config{
+		GMSupport:    &gmtls.GMSupport{},
+		RootCAs:      certPool,
+		Certificates: []gmtls.Certificate{cert},
+		// 设置GCM模式套件放在前面
+		CipherSuites: []uint16{gmtls.GMTLS_SM2_SM4_GCM_SM3, gmtls.GMTLS_SM2_SM4_CBC_SM3},
+	}
+
+	conn, err := gmtls.Dial("tcp", "localhost:50052", config)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	// TODO: 对 conn 读取或写入
+}
+```
+
+### 关于 TLCP AEAD随机数
+
+该套件采用 显式 和 隐式 随机数构造，AEAD随机数（Nonce），总长12字节，4字节隐式随机数、8字节显式部分。
+
+```txt
+      +---------------------+----------------------------------+
+      |      Fixed(4byte)   |          Counter(8byte)          |
+      +---------------------+----------------------------------+
+      <----  隐式随机数  ---> <------------ 显式部分 ------------>
+```
+
+- 隐式随机数为： 工作密钥中的 客户端写IV(`client_write_IV `) 或 服务端写IV(`server_write_IV`)。
+- 显式部分为： 数据包序号(`seq_num`)，也就是`GenericAEADCipher.nonce_explicit`字段。
+
+> 详见 RFC 5116 3.2.  Recommended Nonce Formation
+
+AEAD SM4 与 AEAD AES 128 实现一致。
+
