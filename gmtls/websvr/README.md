@@ -6,6 +6,8 @@
     - [服务端 GMSSL/TLS 工作逻辑](#服务端-gmssltls-工作逻辑)
     - [GMSSL/TLS 自动切换模式](#gmssltls-自动切换模式)
     - [TCLP 双向身份认证](#tclp-双向身份认证)
+        - [服务端配置](#服务端配置)
+        - [客户端配置](#客户端配置)
     - [国密HTTPS客户端](#国密https客户端)
         - [HTTPS 单向身份认证](#https-单向身份认证)
         - [HTTPS 双向身份认证](#https-双向身份认证)
@@ -112,7 +114,6 @@ func main() {
 5. 创建`gmtls.Config`对象，接下就可以启动服务端实现自动切换功能。
 
 ```go
-// Step 1:
 fncGetSignCertKeypair := func(info *gmtls.ClientHelloInfo) (*gmtls.Certificate, error) {
     gmFlag := false
     // 检查支持协议中是否包含GMSSL
@@ -146,42 +147,48 @@ config := &gmtls.Config{
 
 ## TCLP 双向身份认证
 
-服务端开启双向身份认证，需要配置而外参数`ClientAuth`。
+### 服务端配置
 
-建议使用`gmtls.RequireAndVerifyClientCert`表明服务端需要客户端证书请求且需要验证客户端证书。
+1. 设置启用国密TLCP支持。
+2. 配置服务端签名证书密钥和加密证书密钥。
+3. 设置服务端开启双向身份认证，并要求验证客户端证书。
+4. 配置根证书链，用于验证客户端证书。
 
 ```go
-config, err := gmtls.NewBasicAutoSwitchConfig(&sigCert, &encCert, &rsaKeypair)
-if err != nil {
-	panic(err)
+config := &gmtls.Config{
+    GMSupport:    gmtls.NewGMSupport(),
+    Certificates: []gmtls.Certificate{sigCert, encCert},
+    ClientAuth:   gmtls.RequireAndVerifyClientCert,
+    ClientCAs:    certPool,
 }
-
-// 开启客户端的身份认证
-config.ClientAuth = gmtls.RequireAndVerifyClientCert
 ```
 
 > 更多细节请参考：
 > 
-> - [自适应Web服务端 Demo websvr.go #loadAutoSwitchConfigClientAuth](./websvr.go)
+> - [TLCP服务端 双向身份认证配置 Demo websvr.go #loadServerMutualTLCPAuthConfig](./websvr.go)
 
 
+### 客户端配置
 
-客户端的启用双向身份认证也需要配置，只需要提供认证所使用的证书密钥对就可以。
+1. 设置启用国密TLCP支持。
+2. 配置双向身份认证的客户端方的签名证书和密钥对。
+3. 提供验证服务端证书的根证书链。
+4. 设置需要进行安全校验。
 
 例如：
 
 ```go
-config ,err = &gmtls.Config{
-		GMSupport:          &gmtls.GMSupport{},
-		RootCAs:            certPool,
-		Certificates:       []gmtls.Certificate{authKeypair},
-		InsecureSkipVerify: false,
+config := &gmtls.Config{
+    GMSupport:          gmtls.NewGMSupport(),
+    RootCAs:            certPool,
+    Certificates:       []gmtls.Certificate{authKeypair},
+    InsecureSkipVerify: false,
 }
 ```
 
 > 更多细节请参考：
 >
-> - [国际算法标准 客户端 Demo websvr.go #bothAuthConfig](./websvr.go)
+> - [TLCP客户端 双向身份认证配置 Demo websvr.go #bothAuthConfig](./websvr.go)
 
 
 ## 国密HTTPS客户端
@@ -227,7 +234,7 @@ func main() {
 		panic(err)
 	}
 	defer response.Body.Close()
-	// TODO: 使用 response 做你需要的事情...
+	// 使用 response 做你需要的事情...
 }
 ```
 
@@ -271,7 +278,7 @@ func main() {
 		panic(err)
 	}
 	defer response.Body.Close()
-	// TODO: 使用 response 做你需要的事情...
+	// 使用 response 做你需要的事情...
 }
 ```
 
@@ -333,7 +340,7 @@ func main() {
 		RootCAs:      certPool,
 		Certificates: []gmtls.Certificate{cert},
 		// 设置GCM模式套件放在前面
-		CipherSuites: []uint16{gmtls.GMTLS_SM2_SM4_GCM_SM3, gmtls.GMTLS_SM2_SM4_CBC_SM3},
+		CipherSuites: []uint16{gmtls.GMTLS_ECC_SM4_GCM_SM3, gmtls.GMTLS_ECC_SM4_CBC_SM3},
 	}
 
 	conn, err := gmtls.Dial("tcp", "localhost:50052", config)
@@ -342,7 +349,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	// TODO: 对 conn 读取或写入
+	// 对 conn 读取或写入
 }
 ```
 
