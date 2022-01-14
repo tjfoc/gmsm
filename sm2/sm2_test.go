@@ -67,7 +67,7 @@ func TestSm2(t *testing.T) {
 		t.Fatal(err)
 	}
 	signdata, _ := ioutil.ReadFile("TestResult")
-	ok := priv.Verify(msg, signdata) // 密钥验证
+	ok := priv.PublicKey.Verify(msg, signdata) // 密钥验证
 	if ok != true {
 		fmt.Printf("Verify error\n")
 	} else {
@@ -96,7 +96,7 @@ func BenchmarkSM2(t *testing.B) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		priv.Verify(msg, sign) // 密钥验证
+		priv.PublicKey.Verify(msg, sign) // 密钥验证
 	}
 }
 
