@@ -43,8 +43,6 @@ func TestSM4(t *testing.T) {
 	}
 	fmt.Printf("ecbMsg = %x\n", ecbMsg)
 	iv := []byte("0000000000000000")
-	err = SetIV(iv)
-	fmt.Printf("err = %v\n", err)
 	ecbDec, err := Sm4Ecb(key, ecbMsg, false)
 	if err != nil {
 		t.Errorf("sm4 dec error:%s", err)
@@ -54,12 +52,12 @@ func TestSM4(t *testing.T) {
 	if !testCompare(data, ecbDec) {
 		t.Errorf("sm4 self enc and dec failed")
 	}
-	cbcMsg, err := Sm4Cbc(key, data, true)
+	cbcMsg, err := Sm4Cbc(key, iv, data, true)
 	if err != nil {
 		t.Errorf("sm4 enc error:%s", err)
 	}
 	fmt.Printf("cbcMsg = %x\n", cbcMsg)
-	cbcDec, err := Sm4Cbc(key, cbcMsg, false)
+	cbcDec, err := Sm4Cbc(key, iv, cbcMsg, false)
 	if err != nil {
 		t.Errorf("sm4 dec error:%s", err)
 		return
@@ -69,26 +67,26 @@ func TestSM4(t *testing.T) {
 		t.Errorf("sm4 self enc and dec failed")
 	}
 
-	cbcMsg, err = Sm4CFB(key, data, true)
+	cbcMsg, err = Sm4CFB(key, iv, data, true)
 	if err != nil {
 		t.Errorf("sm4 enc error:%s", err)
 	}
 	fmt.Printf("cbcCFB = %x\n", cbcMsg)
 
-	cbcCfb, err := Sm4CFB(key, cbcMsg, false)
+	cbcCfb, err := Sm4CFB(key, iv, cbcMsg, false)
 	if err != nil {
 		t.Errorf("sm4 dec error:%s", err)
 		return
 	}
 	fmt.Printf("cbcCFB = %x\n", cbcCfb)
 
-	cbcMsg, err = Sm4OFB(key, data, true)
+	cbcMsg, err = Sm4OFB(key, iv, data, true)
 	if err != nil {
 		t.Errorf("sm4 enc error:%s", err)
 	}
 	fmt.Printf("cbcOFB = %x\n", cbcMsg)
 
-	cbcOfc, err := Sm4OFB(key, cbcMsg, false)
+	cbcOfc, err := Sm4OFB(key, iv, cbcMsg, false)
 	if err != nil {
 		t.Errorf("sm4 dec error:%s", err)
 		return
