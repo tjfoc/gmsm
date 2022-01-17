@@ -234,3 +234,35 @@ func createClientGMTLSConfig(keyPath string, certPath string, caPaths []string) 
 	return cfg, nil
 
 }
+
+func ExampleHTTPSClient_Insecure() {
+	certPool := x509.NewCertPool()
+
+	tlsConfig := Config{
+		GMSupport:          &GMSupport{WorkMode: ModeGMSSLOnly},
+		RootCAs:            certPool,
+		InsecureSkipVerify: true,
+	}
+	httpClient := http.Client{
+		Transport: NewSimpleRoundTripper(&tlsConfig),
+	}
+
+	urlstr := "https://sm2test.ovssl.cn"
+	response, err := httpClient.Get(urlstr)
+	if err != nil {
+		panic(err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		panic(fmt.Errorf("unexpected response status: %v", response.Status))
+	}
+
+	_, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		panic(fmt.Errorf("read response failed: %v", err))
+	}
+
+	fmt.Println("Ok")
+	// Output: Ok
+}

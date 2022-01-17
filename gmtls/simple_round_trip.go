@@ -21,7 +21,11 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
+	"unicode"
+
+	"golang.org/x/net/idna"
 )
 
 // SimpleRoundTripper 简单的单次HTTP/HTTPS（国密） 连接往返器
@@ -47,9 +51,7 @@ func (s *SimpleRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	}
 
 	// 获取主机名 和 端口
-	hostname := req.URL.Hostname()
-	port := req.URL.Port()
-	address := net.JoinHostPort(hostname, port)
+	address := canonicalAddr(req.URL)
 
 	var conn io.ReadWriteCloser
 	var err error
@@ -67,7 +69,6 @@ func (s *SimpleRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 			return nil, err
 		}
 	}
-	defer conn.Close()
 
 	// 把请求写入连接中，发起请求
 	err = req.Write(conn)
@@ -84,4 +85,51 @@ func (s *SimpleRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 		response.Body = conn
 	}
 	return response, nil
+}
+
+var portMap = map[string]string{
+	"http":   "80",
+	"https":  "443",
+	"socks5": "1080",
+}
+
+// canonicalAddr returns url.Host but always with a ":port" suffix
+// Taken from std
+func canonicalAddr(url *url.URL) string {
+	addr := url.Hostname()
+	if v, err := idnaASCII(addr); err == nil {
+		addr = v
+	}
+	port := url.Port()
+	if port == "" {
+		port = portMap[url.Scheme]
+	}
+	return net.JoinHostPort(addr, port)
+}
+
+func idnaASCII(v string) (string, error) {
+	// TODO: Consider removing this check after verifying performance is okay.
+	// Right now punycode verification, length checks, context checks, and the
+	// permissible character tests are all omitted. It also prevents the ToASCII
+	// call from salvaging an invalid IDN, when possible. As a result it may be
+	// possible to have two IDNs that appear identical to the user where the
+	// ASCII-only version causes an error downstream whereas the non-ASCII
+	// version does not.
+	// Note that for correct ASCII IDNs ToASCII will only do considerably more
+	// work, but it will not cause an allocation.
+	//
+	if asciiIs(v) {
+		return v, nil
+	}
+	return idna.Lookup.ToASCII(v)
+}
+
+// Is returns whether s is ASCII.
+func asciiIs(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] > unicode.MaxASCII {
+			return false
+		}
+	}
+	return true
 }
