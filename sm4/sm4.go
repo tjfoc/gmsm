@@ -16,6 +16,7 @@ sm4 acceleration
 modified by Jack, 2017 Oct
 */
 
+// Deprecated: use github.com/emmansun/gmsm/sm4 instead
 package sm4
 
 import (

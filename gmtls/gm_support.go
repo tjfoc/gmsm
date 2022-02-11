@@ -15,9 +15,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/emmansun/gmsm/sm4"
+
 	"github.com/tjfoc/gmsm/sm2"
 	"github.com/tjfoc/gmsm/sm3"
-	"github.com/tjfoc/gmsm/sm4"
 	"github.com/tjfoc/gmsm/x509"
 )
 
