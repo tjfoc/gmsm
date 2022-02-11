@@ -5,8 +5,9 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
-	"github.com/tjfoc/gmsm/sm4"
 	"testing"
+
+	"github.com/emmansun/gmsm/sm4"
 )
 
 func TestP7BlockDecrypt(t *testing.T) {
