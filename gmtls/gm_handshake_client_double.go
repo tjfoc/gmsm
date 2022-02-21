@@ -231,6 +231,10 @@ func (hs *clientHandshakeStateGM) doFullHandshake() error {
 				DNSName:       c.config.ServerName,
 				Intermediates: x509.NewCertPool(),
 			}
+			if c.config.SkipServerNameVerify {
+				opts.DNSName = ""
+			}
+
 			if opts.Roots == nil {
 				opts.Roots = x509.NewCertPool()
 			}

@@ -121,7 +121,7 @@ func processClientHelloGM(c *Conn, hs *serverHandshakeStateGM) (isResume bool, e
 	}
 	// Edit: 根据 GMT 0024 6.4.4.1.1 Client Hello 消息 b) random 描述
 	// 客户端产生的随机信息，其内容包括时钟和随机数。
-	gmtRandom(&(hs.hello.random))
+	gmtRandom(hs.hello.random)
 
 	if len(hs.clientHello.secureRenegotiation) != 0 {
 		_ = c.sendAlert(alertHandshakeFailure)
@@ -158,7 +158,7 @@ func processClientHelloGM(c *Conn, hs *serverHandshakeStateGM) (isResume bool, e
 		_ = c.sendAlert(alertInternalError)
 		return false, err
 	}
-	encCert, err := c.config.GetKECertificate(hs.clientHelloInfo())
+	encCert, err := c.config.getEKCertificate(hs.clientHelloInfo())
 	if err != nil {
 		_ = c.sendAlert(alertInternalError)
 		return false, err
@@ -522,12 +522,11 @@ func runServerHandshake(c *Conn, hs *serverHandshakeState, isResume bool) error 
 }
 
 // 国密类型的随机数 4 byte unix time 28 byte random
-func gmtRandom(raw *[]byte) uint32 {
-	rd := *raw
+func gmtRandom(raw []byte) uint32 {
 	unixTime := time.Now().Unix()
-	rd[0] = uint8(unixTime >> 24)
-	rd[1] = uint8(unixTime >> 16)
-	rd[2] = uint8(unixTime >> 8)
-	rd[3] = uint8(unixTime)
+	raw[0] = uint8(unixTime >> 24)
+	raw[1] = uint8(unixTime >> 16)
+	raw[2] = uint8(unixTime >> 8)
+	raw[3] = uint8(unixTime)
 	return uint32(unixTime)
 }

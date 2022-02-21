@@ -476,6 +476,9 @@ type Config struct {
 	// This should be used only for testing.
 	InsecureSkipVerify bool
 
+	// 跳过证书与域名的验证
+	SkipServerNameVerify bool
+
 	// CipherSuites is a list of supported cipher suites. If CipherSuites
 	// is nil, TLS uses a list of suites supported by the implementation.
 	CipherSuites []uint16
@@ -613,6 +616,7 @@ func (c *Config) Clone() *Config {
 		Renegotiation:               c.Renegotiation,
 		KeyLogWriter:                c.KeyLogWriter,
 		sessionTicketKeys:           sessionTicketKeys,
+		SkipServerNameVerify:        c.SkipServerNameVerify,
 	}
 }
 
