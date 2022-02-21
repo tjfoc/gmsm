@@ -1080,7 +1080,7 @@ func (c *Conn) Write(b []byte) (int, error) {
 	// https://www.imperialviolet.org/2012/01/15/beastfollowup.html
 
 	var m int
-	if len(b) > 1 && c.vers <= VersionTLS10 {
+	if len(b) > 1 && c.vers <= VersionTLS10 && c.vers != VersionGMSSL {
 		if _, ok := c.out.cipher.(cipher.BlockMode); ok {
 			n, err := c.writeRecordLocked(recordTypeApplicationData, b[:1])
 			if err != nil {

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build !single_cert
 // +build !single_cert
 
 package gmtls
@@ -135,11 +136,12 @@ func (hs *serverHandshakeStateGM) readClientHello() (isResume bool, err error) {
 		}
 	}
 
-	c.vers, ok = c.config.mutualVersion(hs.clientHello.vers)
-	if !ok {
+	c.vers = hs.clientHello.vers
+	if hs.clientHello.vers != VersionGMSSL {
 		c.sendAlert(alertProtocolVersion)
-		return false, fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
+		return false, fmt.Errorf("tlcp: only support tclp version 0x0101,but get protocol version of %x", hs.clientHello.vers)
 	}
+
 	c.haveVers = true
 
 	hs.hello = new(serverHelloMsg)
@@ -165,6 +167,8 @@ func (hs *serverHandshakeStateGM) readClientHello() (isResume bool, err error) {
 		c.sendAlert(alertInternalError)
 		return false, err
 	}
+	// 客户端产生的随机信息，其内容包括时钟和随机数。
+	gmtRandom(hs.hello.random)
 
 	if len(hs.clientHello.secureRenegotiation) != 0 {
 		c.sendAlert(alertHandshakeFailure)
@@ -193,9 +197,24 @@ func (hs *serverHandshakeStateGM) readClientHello() (isResume bool, err error) {
 		}
 	}
 
-	// just for test
-	c.config.getCertificate(hs.clientHelloInfo())
-	hs.cert = c.config.Certificates
+	if len(c.config.Certificates) < 2 {
+		var sigCert, encCert *Certificate
+		// 当证书数量不足时，通过配置提供的证书获取方法获取密钥对
+		sigCert, err = c.config.getCertificate(hs.clientHelloInfo())
+		if err != nil {
+			_ = c.sendAlert(alertInternalError)
+			return false, err
+		}
+		encCert, err = c.config.getEKCertificate(hs.clientHelloInfo())
+		if err != nil {
+			_ = c.sendAlert(alertInternalError)
+			return false, err
+		}
+		// 第1张证书为 签名证书、第2张为加密证书（用于密钥交换）
+		hs.cert = []Certificate{*sigCert, *encCert}
+	} else {
+		hs.cert = c.config.Certificates
+	}
 
 	// GMT0024
 	if len(hs.cert) < 2 {
