@@ -41,6 +41,7 @@ func makeClientHelloGM(config *Config) (*clientHelloMsg, error) {
 		vers:               config.GMSupport.GetVersion(),
 		compressionMethods: []uint8{compressionNone},
 		random:             make([]byte, 32),
+		alpnProtocols:      config.NextProtos,
 	}
 	possibleCipherSuites := getCipherSuites(config)
 	hello.cipherSuites = make([]uint16, 0, len(possibleCipherSuites))

@@ -40,6 +40,7 @@ func makeClientHelloGM(config *Config) (*clientHelloMsg, error) {
 		compressionMethods: []uint8{compressionNone},
 		random:             make([]byte, 32),
 		serverName:         hostnameInSNI(config.ServerName),
+		alpnProtocols:      config.NextProtos,
 	}
 	possibleCipherSuites := getCipherSuites(config)
 	hello.cipherSuites = make([]uint16, 0, len(possibleCipherSuites))
