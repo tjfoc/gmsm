@@ -19,6 +19,7 @@ package sm4
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"testing"
 )
@@ -58,4 +59,111 @@ func TestSM4GCM(t *testing.T){
 		}
 	}
 
+}
+
+func TestGHASH(t *testing.T) {
+	type args struct {
+		hHex string
+		aHex string
+		cHex string
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantOutHex string
+	}{
+		{
+			name: "ok1",
+			args: args{
+				hHex: "66e94bd4ef8a2c3b884cfa59ca342b2e",
+				aHex: "",
+				cHex: "",
+			},
+			wantOutHex: "00000000000000000000000000000000",
+		},
+		{
+			name: "ok2",
+			args: args{
+				hHex: "66e94bd4ef8a2c3b884cfa59ca342b2e",
+				aHex: "",
+				cHex: "0388dace60b6a392f328c2b971b2fe78",
+			},
+			wantOutHex: "f38cbb1ad69223dcc3457ae5b6b0f885",
+		},
+		{
+			name: "ok3",
+			args: args{
+				hHex: "b83b533708bf535d0aa6e52980d53b78",
+				aHex: "",
+				cHex: "42831ec2217774244b7221b784d0d49c" +
+					"e3aa212f2c02a4e035c17e2329aca12e" +
+					"21d514b25466931c7d8f6a5aac84aa05" +
+					"1ba30b396a0aac973d58e091473f5985",
+			},
+			wantOutHex: "7f1b32b81b820d02614f8895ac1d4eac",
+		},
+		{
+			name: "ok4",
+			args: args{
+				hHex: "b83b533708bf535d0aa6e52980d53b78",
+				aHex: "feedfacedeadbeeffeedfacedeadbeef" +
+					"abaddad2",
+				cHex: "42831ec2217774244b7221b784d0d49c" +
+					"e3aa212f2c02a4e035c17e2329aca12e" +
+					"21d514b25466931c7d8f6a5aac84aa05" +
+					"1ba30b396a0aac973d58e091",
+			},
+			wantOutHex: "698e57f70e6ecc7fd9463b7260a9ae5f",
+		},
+		{
+			name: "ok5",
+			args: args{
+				hHex: "b83b533708bf535d0aa6e52980d53b78",
+				aHex: "feedfacedeadbeeffeedfacedeadbeef" +
+					"abaddad2",
+				cHex: "61353b4c2806934a777ff51fa22a4755" +
+					"699b2a714fcdc6f83766e5f97b6c7423" +
+					"73806900e49f24b22b097544d4896b42" +
+					"4989b5e1ebac0f07c23f4598",
+			},
+			wantOutHex: "df586bb4c249b92cb6922877e444d37b",
+		},
+		{
+			name: "ok6",
+			args: args{
+				hHex: "b83b533708bf535d0aa6e52980d53b78",
+				aHex: "feedfacedeadbeeffeedfacedeadbeef" +
+					"abaddad2",
+				cHex: "8ce24998625615b603a033aca13fb894" +
+					"be9112a5c3a211a8ba262a3cca7e2ca7" +
+					"01e4a9a4fba43c90ccdcb281d48c7c6f" +
+					"d62875d2aca417034c34aee5",
+			},
+			wantOutHex: "1c5afe9760d3932f3c9a878aac3dc3de",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, err := hex.DecodeString(tt.args.hHex)
+			if err != nil {
+				t.Errorf("GHash() error = %v, wrong h", err)
+				return
+			}
+			a, err := hex.DecodeString(tt.args.aHex)
+			if err != nil {
+				t.Errorf("GHash() error = %v, wrong a", err)
+				return
+			}
+			c, err := hex.DecodeString(tt.args.cHex)
+			if err != nil {
+				t.Errorf("GHash() error = %v, wrong c", err)
+				return
+			}
+			gotOut := GHASH(h, a, c)
+			gotOutStr := hex.EncodeToString(gotOut)
+			if gotOutStr != tt.wantOutHex {
+				t.Errorf("GHash() gotOut = %v, want %v", gotOutStr, tt.wantOutHex)
+			}
+		})
+	}
 }

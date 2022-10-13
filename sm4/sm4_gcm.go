@@ -184,8 +184,8 @@ func GHASH(H []byte, A []byte, C []byte) (X []byte) {
 		data[7] = byte((len >> 0) & 0xff)
 		return data
 	}
-	lenAB = append(lenAB, calculateLenToBytes(len(A))...)
-	lenAB = append(lenAB, calculateLenToBytes(len(C))...)
+	lenAB = append(lenAB, calculateLenToBytes(len(A)<<3)...)
+	lenAB = append(lenAB, calculateLenToBytes(len(C)<<3)...)
 	copy(X[(m+n+1)*BlockSize:(m+n+1)*BlockSize+BlockSize], multiplication(addition(X[(m+n)*BlockSize:(m+n)*BlockSize+BlockSize], lenAB), H))
 	return X[(m+n+1)*BlockSize : (m+n+1)*BlockSize+BlockSize]
 }
