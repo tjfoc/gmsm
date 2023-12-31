@@ -299,7 +299,7 @@ func SetIV(iv []byte) error {
 	return nil
 }
 
-func Sm4Cbc(key []byte, in []byte, mode bool) (out []byte, err error) {
+func Sm4Cbc(key []byte, in []byte, mode bool, ivInput ...[]byte) (out []byte, err error) {
 	if len(key) != BlockSize {
 		return nil, errors.New("SM4: invalid key size " + strconv.Itoa(len(key)))
 	}
@@ -310,7 +310,14 @@ func Sm4Cbc(key []byte, in []byte, mode bool) (out []byte, err error) {
 		inData = in
 	}
 	iv := make([]byte, BlockSize)
-	copy(iv, IV)
+	if ivInput != nil {
+		if len(ivInput[0]) != BlockSize {
+			return nil, errors.New("SM4: invalid iv size")
+		}
+		copy(iv, ivInput[0])
+	} else {
+		copy(iv, IV)
+	}
 	out = make([]byte, len(inData))
 	c, err := NewCipher(key)
 	if err != nil {
